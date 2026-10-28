@@ -54,8 +54,8 @@ async function startServer() {
       console.warn('⚠️ Warning: MONGODB_URI is not set or still contains placeholder credentials in .env.');
     }
 
-    app.listen(PORT, () => {
-      console.log(`🚀 LeaveEase Unified Full-Stack app running at http://localhost:${PORT}`);
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 LeaveEase Unified Full-Stack app running at http://0.0.0.0:${PORT}`);
     });
   } catch (err) {
     console.error('Failed to start server:', err);
