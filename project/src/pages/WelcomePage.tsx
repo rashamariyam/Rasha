@@ -341,15 +341,15 @@ export function WelcomePage({ onSelectRole }: WelcomePageProps) {
           {/* Dynamic Metrics Ribbon */}
           <div className="mt-14 grid grid-cols-2 gap-4 sm:grid-cols-4 max-w-4xl mx-auto">
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md p-4 text-center">
-              <p className="text-2xl sm:text-3xl font-bold text-white">{data.users.length}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-white">{data?.users?.length ?? 8}</p>
               <p className="text-xs text-slate-400 mt-1">Verified Users</p>
             </div>
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md p-4 text-center">
-              <p className="text-2xl sm:text-3xl font-bold text-emerald-400">{data.classrooms.length}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-emerald-400">{data?.classrooms?.length ?? 6}</p>
               <p className="text-xs text-slate-400 mt-1">Smart Classrooms</p>
             </div>
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md p-4 text-center">
-              <p className="text-2xl sm:text-3xl font-bold text-purple-400">{data.greenCardSlots.length}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-purple-400">{data?.greenCardSlots?.length ?? 4}</p>
               <p className="text-xs text-slate-400 mt-1">Green Card Slots</p>
             </div>
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md p-4 text-center">
@@ -621,7 +621,7 @@ export function WelcomePage({ onSelectRole }: WelcomePageProps) {
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {DEMO_ACCOUNTS.map((acc) => {
-                const user = data.users.find((u) => u.email === acc.email);
+                const user = data?.users ? data.users.find((u) => u.email === acc.email) : undefined;
                 return (
                   <div
                     key={acc.role}

@@ -36,12 +36,31 @@ app.get('/api/health', (req, res) => {
 
 // Serve Frontend Static Files (Single Host Setup)
 const frontendDist = path.join(__dirname, '..', 'project', 'dist');
-if (fs.existsSync(frontendDist)) {
-  app.use(express.static(frontendDist));
+const rootDist = path.join(__dirname, '..', 'dist');
+const distPath = fs.existsSync(frontendDist) ? frontendDist : (fs.existsSync(rootDist) ? rootDist : null);
+
+if (distPath) {
+  app.use(express.static(distPath));
 
   // SPA fallback for non-API client-side routes (e.g. /login, /student/dashboard)
   app.get('*', (req, res) => {
-    res.sendFile(path.join(frontendDist, 'index.html'));
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+} else {
+  console.warn('⚠️ Warning: Frontend dist folder not found. API routes are active.');
+  app.get('*', (req, res) => {
+    res.status(200).send(`
+      <!DOCTYPE html>
+      <html>
+        <head><title>LeaveEase - Building Frontend</title></head>
+        <body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #0f172a; color: white;">
+          <div style="text-align: center; max-width: 500px; padding: 2rem;">
+            <h2>🚀 LeaveEase Backend API is Live</h2>
+            <p style="color: #94a3b8;">Frontend assets are currently compiling or building. Please refresh in a moment or run npm run build.</p>
+          </div>
+        </body>
+      </html>
+    `);
   });
 }
 
