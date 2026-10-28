@@ -176,6 +176,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [data.users]);
 
+  const update = useCallback((updater: (d: AppData) => AppData) => {
+    setData((prev) => {
+      const next = updater(prev);
+      saveData(next);
+      return next;
+    });
+  }, []);
+
   // Synchronize leave requests in real-time with backend MongoDB database across all devices
   useEffect(() => {
     let isMounted = true;
@@ -211,14 +219,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       clearInterval(timer);
     };
   }, [update]);
-
-  const update = useCallback((updater: (d: AppData) => AppData) => {
-    setData((prev) => {
-      const next = updater(prev);
-      saveData(next);
-      return next;
-    });
-  }, []);
 
   const toast = useCallback((type: Toast['type'], message: string) => {
     const id = uid('toast');
