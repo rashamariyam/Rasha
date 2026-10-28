@@ -13,6 +13,7 @@ export function LeaveApprovalsPage() {
   const { currentUser, data, decideLeave } = useApp();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [deptScope, setDeptScope] = useState<'my' | 'all'>('my');
   const [viewReq, setViewReq] = useState<LeaveRequest | null>(null);
   const [decision, setDecision] = useState<{ req: LeaveRequest; approve: boolean } | null>(null);
   const [note, setNote] = useState('');
@@ -22,7 +23,14 @@ export function LeaveApprovalsPage() {
 
   let requests = data.leaveRequests;
   if (role === 'teacher' || role === 'hod') {
-    requests = requests.filter((r) => r.department === currentUser.department);
+    const userDept = (currentUser.department || '').trim().toLowerCase();
+    if (deptScope === 'my') {
+      const myDeptRequests = requests.filter(
+        (r) => (r.department || '').trim().toLowerCase() === userDept
+      );
+      // Auto-fallback: if no requests found specifically in teacher's department, show all so requests are never lost
+      requests = myDeptRequests.length > 0 ? myDeptRequests : requests;
+    }
   }
 
   const filtered = requests
@@ -31,7 +39,8 @@ export function LeaveApprovalsPage() {
       const q = search.toLowerCase();
       return r.studentName.toLowerCase().includes(q) ||
         r.leaveType.toLowerCase().includes(q) ||
-        r.rollNo.toLowerCase().includes(q);
+        r.rollNo.toLowerCase().includes(q) ||
+        r.department.toLowerCase().includes(q);
     })
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
@@ -63,15 +72,44 @@ export function LeaveApprovalsPage() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex-1 max-w-md">
-          <SearchBar value={search} onChange={setSearch} placeholder="Search by student name, roll no, or type..." />
+          <SearchBar value={search} onChange={setSearch} placeholder="Search student, roll no, department..." />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Department Scope Selector */}
+          {(role === 'teacher' || role === 'hod') && (
+            <div className="flex rounded-lg border border-gray-200 bg-gray-50 p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setDeptScope('my')}
+                className={`rounded-md px-2.5 py-1 font-medium transition ${
+                  deptScope === 'my'
+                    ? 'bg-white text-navy-900 shadow-xs'
+                    : 'text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                {currentUser.department || 'My Dept'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeptScope('all')}
+                className={`rounded-md px-2.5 py-1 font-medium transition ${
+                  deptScope === 'all'
+                    ? 'bg-white text-navy-900 shadow-xs'
+                    : 'text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                All Depts
+              </button>
+            </div>
+          )}
+
+          {/* Status Filter */}
           <div className="flex rounded-lg border border-gray-200 p-1">
             {(['all', 'pending', 'approved', 'rejected'] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium capitalize transition ${filter === f ? 'bg-navy-800 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+                className={`rounded-md px-3 py-1.5 text-xs sm:text-sm font-medium capitalize transition ${filter === f ? 'bg-navy-800 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
               >
                 {f}
               </button>
@@ -89,63 +127,128 @@ export function LeaveApprovalsPage() {
         {filtered.length === 0 ? (
           <EmptyState icon={<CheckSquare size={32} />} title="No requests found" message="No leave requests match your filters" />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  <th className="px-5 py-3">Student</th>
-                  <th className="px-5 py-3">Roll No</th>
-                  <th className="px-5 py-3">Type</th>
-                  <th className="px-5 py-3">Duration</th>
-                  <th className="px-5 py-3">Teacher</th>
-                  <th className="px-5 py-3">HOD</th>
-                  <th className="px-5 py-3">Status</th>
-                  <th className="px-5 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((r) => (
-                  <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="px-5 py-3 font-medium text-gray-800">{r.studentName}</td>
-                    <td className="px-5 py-3 text-gray-600">{r.rollNo}</td>
-                    <td className="px-5 py-3 text-gray-600">{r.leaveType}</td>
-                    <td className="px-5 py-3 text-gray-600">{formatDate(r.startDate)} → {formatDate(r.endDate)}</td>
-                    <td className="px-5 py-3">{r.teacherApproved ? <StatusBadge status="approved" /> : <StatusBadge status="pending" />}</td>
-                    <td className="px-5 py-3">{r.hodApproved ? <StatusBadge status="approved" /> : <StatusBadge status="pending" />}</td>
-                    <td className="px-5 py-3"><StatusBadge status={r.status} /></td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => setViewReq(r)} className="rounded-lg p-1.5 text-navy-600 hover:bg-navy-50" title="View details">
-                          <Eye size={18} />
+          <>
+            {/* Mobile Touch-Optimized Cards View (Phone Screens) */}
+            <div className="block sm:hidden divide-y divide-gray-100">
+              {filtered.map((r) => (
+                <div key={r.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="font-semibold text-gray-900 text-sm sm:text-base">{r.studentName}</h4>
+                      <p className="text-xs text-gray-500 font-mono mt-0.5">{r.rollNo} · {r.department}</p>
+                    </div>
+                    <StatusBadge status={r.status} />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                    <span className="font-semibold text-navy-800 bg-white px-2 py-0.5 rounded border border-gray-200 shadow-2xs">
+                      {r.leaveType}
+                    </span>
+                    <span>{formatDate(r.startDate)} → {formatDate(r.endDate)}</span>
+                  </div>
+
+                  {r.reason && (
+                    <p className="text-xs text-gray-600 line-clamp-2 italic bg-navy-50/30 p-2 rounded">
+                      "{r.reason}"
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1">
+                    <span>Teacher: {r.teacherApproved ? '✅ Verified' : '⏳ Pending'}</span>
+                    <span>HOD: {r.hodApproved ? '✅ Verified' : '⏳ Pending'}</span>
+                  </div>
+
+                  {/* Mobile Quick Action Buttons */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => setViewReq(r)}
+                      className="flex-1 flex items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 active:bg-gray-100"
+                    >
+                      <Eye size={15} /> Details
+                    </button>
+                    {canDecide(r) && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => { setDecision({ req: r, approve: false }); setNote(''); }}
+                          className="flex-1 flex items-center justify-center gap-1 rounded-lg border border-red-200 bg-red-50 py-2 text-xs font-semibold text-red-600 hover:bg-red-100 active:bg-red-200"
+                        >
+                          <X size={15} /> Reject
                         </button>
-                        {canDecide(r) && (
-                          <>
-                            <button
-                              onClick={() => { setDecision({ req: r, approve: true }); setNote(''); }}
-                              className="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50"
-                              title="Approve"
-                            >
-                              <Check size={18} />
-                            </button>
-                            <button
-                              onClick={() => { setDecision({ req: r, approve: false }); setNote(''); }}
-                              className="rounded-lg p-1.5 text-red-600 hover:bg-red-50"
-                              title="Reject"
-                            >
-                              <X size={18} />
-                            </button>
-                          </>
-                        )}
-                        {!canDecide(r) && r.status === 'pending' && (
-                          <span className="flex items-center gap-1 text-xs text-gray-400"><Clock size={14} /> Waiting</span>
-                        )}
-                      </div>
-                    </td>
+                        <button
+                          type="button"
+                          onClick={() => { setDecision({ req: r, approve: true }); setNote(''); }}
+                          className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-emerald-600 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 active:bg-emerald-800"
+                        >
+                          <Check size={15} /> Approve
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Full Table View (Tablet & Desktop Screens) */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    <th className="px-5 py-3">Student</th>
+                    <th className="px-5 py-3">Roll No</th>
+                    <th className="px-5 py-3">Type</th>
+                    <th className="px-5 py-3">Duration</th>
+                    <th className="px-5 py-3">Teacher</th>
+                    <th className="px-5 py-3">HOD</th>
+                    <th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {filtered.map((r) => (
+                    <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
+                      <td className="px-5 py-3 font-medium text-gray-800">{r.studentName}</td>
+                      <td className="px-5 py-3 text-gray-600">{r.rollNo}</td>
+                      <td className="px-5 py-3 text-gray-600">{r.leaveType}</td>
+                      <td className="px-5 py-3 text-gray-600">{formatDate(r.startDate)} → {formatDate(r.endDate)}</td>
+                      <td className="px-5 py-3">{r.teacherApproved ? <StatusBadge status="approved" /> : <StatusBadge status="pending" />}</td>
+                      <td className="px-5 py-3">{r.hodApproved ? <StatusBadge status="approved" /> : <StatusBadge status="pending" />}</td>
+                      <td className="px-5 py-3"><StatusBadge status={r.status} /></td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => setViewReq(r)} className="rounded-lg p-1.5 text-navy-600 hover:bg-navy-50" title="View details">
+                            <Eye size={18} />
+                          </button>
+                          {canDecide(r) && (
+                            <>
+                              <button
+                                onClick={() => { setDecision({ req: r, approve: true }); setNote(''); }}
+                                className="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50"
+                                title="Approve"
+                              >
+                                <Check size={18} />
+                              </button>
+                              <button
+                                onClick={() => { setDecision({ req: r, approve: false }); setNote(''); }}
+                                className="rounded-lg p-1.5 text-red-600 hover:bg-red-50"
+                                title="Reject"
+                              >
+                                <X size={18} />
+                              </button>
+                            </>
+                          )}
+                          {!canDecide(r) && r.status === 'pending' && (
+                            <span className="flex items-center gap-1 text-xs text-gray-400"><Clock size={14} /> Waiting</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </Card>
 

@@ -176,6 +176,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [data.users]);
 
+  // Synchronize leave requests in real-time with backend MongoDB database across all devices
+  useEffect(() => {
+    let isMounted = true;
+    const syncBackendLeaves = async () => {
+      try {
+        const res = await fetch('/api/leaves');
+        if (!res.ok) return;
+        const result = await res.json();
+        if (result.success && Array.isArray(result.leaves) && result.leaves.length > 0) {
+          if (!isMounted) return;
+          update((d) => {
+            const existingIds = new Set(d.leaveRequests.map((r) => r.id));
+            const newFromBackend = result.leaves.filter((r: LeaveRequest) => !existingIds.has(r.id));
+            const backendMap = new Map(result.leaves.map((r: LeaveRequest) => [r.id, r]));
+            const merged = d.leaveRequests.map((r) =>
+              backendMap.has(r.id) ? (backendMap.get(r.id) as LeaveRequest) : r
+            );
+            return {
+              ...d,
+              leaveRequests: [...newFromBackend, ...merged],
+            };
+          });
+        }
+      } catch (e) {
+        // Fallback to client storage
+      }
+    };
+
+    syncBackendLeaves();
+    const timer = setInterval(syncBackendLeaves, 4000);
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, [update]);
+
   const update = useCallback((updater: (d: AppData) => AppData) => {
     setData((prev) => {
       const next = updater(prev);
@@ -695,22 +731,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
         hodApproved: false,
         createdAt: isoHoursFromNow(0),
       };
+
+      // 1. Update local state and localStorage immediately
       update((d) => {
         let next = { ...d, leaveRequests: [newReq, ...d.leaveRequests] };
-        const teachers = d.users.filter(
-          (u) => u.role === 'teacher' && u.department === req.department && u.accountStatus === 'active'
+        const deptNorm = (req.department || '').trim().toLowerCase();
+        let teachers = d.users.filter(
+          (u) =>
+            u.role === 'teacher' &&
+            u.accountStatus === 'active' &&
+            (u.department || '').trim().toLowerCase() === deptNorm
         );
+        // Fallback: If no teacher in this specific department, notify all active teachers so requests are never lost
+        if (teachers.length === 0) {
+          teachers = d.users.filter((u) => u.role === 'teacher' && u.accountStatus === 'active');
+        }
         for (const t of teachers) {
           next = addNotification(
             next,
             t.id,
             'New Leave Request',
-            `${req.studentName} submitted a ${req.leaveType} request.`,
+            `${req.studentName} (${req.department || 'Student'}) submitted a ${req.leaveType} request.`,
             'info'
           );
         }
         return next;
       });
+
+      // 2. Synchronize to MongoDB backend API so teachers on laptop/other devices receive it
+      fetch('/api/leaves', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newReq),
+      }).catch((err) => {
+        console.warn('Backend MongoDB sync:', err);
+      });
+
       toast('success', 'Leave application submitted successfully');
     },
     [update, toast]
@@ -718,10 +774,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const decideLeave = useCallback(
     (id: string, approved: boolean, note: string) => {
+      const decider = currentUser?.name ?? 'Reviewer';
+
       update((d) => {
         const req = d.leaveRequests.find((r) => r.id === id);
         if (!req) return d;
-        const decider = currentUser?.name ?? 'Reviewer';
         let status = req.status;
         let teacherApproved = req.teacherApproved;
         let hodApproved = req.hodApproved;
@@ -764,6 +821,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
           approved ? 'success' : 'error'
         );
       });
+
+      // Synchronize decision to MongoDB
+      fetch(`/api/leaves/${id}/decide`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          approved,
+          note,
+          role: currentUser?.role,
+          deciderName: decider,
+        }),
+      }).catch((err) => {
+        console.warn('Backend MongoDB decide sync:', err);
+      });
+
       toast(approved ? 'success' : 'info', `Request ${approved ? 'approved' : 'rejected'}`);
     },
     [update, currentUser, toast]
