@@ -1,0 +1,30 @@
+# Environment Variables & Secrets
+.env
+.env*.local
+*.env
+
+# Dependencies
+node_modules/
+server/node_modules/
+project/node_modules/
+
+# Logs
+*.log
+tunnel.log
+tunnel_err.log
+logs/
+
+# Build artifacts
+dist/
+dist-ssr/
+project/dist/
+*.zip
+LeaveEase-Website-Export/
+Rasha/
+
+# Editor & OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json

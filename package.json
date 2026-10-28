@@ -2,8 +2,12 @@
   "name": "leaveease-workspace",
   "private": true,
   "scripts": {
+    "start": "node server/index.js",
+    "build": "npm --prefix project install && npm --prefix project run build && npm --prefix server install",
     "dev": "npm --prefix project run dev",
-    "build": "npm --prefix project run build",
+    "server": "npm --prefix server start",
+    "server:dev": "npm --prefix server run dev",
+    "seed": "node server/seed.js",
     "lint": "npm --prefix project run lint",
     "typecheck": "npm --prefix project run typecheck"
   }
