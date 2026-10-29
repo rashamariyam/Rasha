@@ -3,6 +3,7 @@ import { useApp } from '@/store/AppContext';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Field, Input, Select, Textarea, Button } from '@/components/ui/Form';
 import { DocumentViewerModal } from '@/components/ui/DocumentViewerModal';
+import { compressImage } from '@/lib/documentUtils';
 import { FileText, Paperclip, CheckCircle2, Eye, Trash2, AlertCircle } from 'lucide-react';
 
 const leaveTypes = ['Sick Leave', 'Personal Leave', 'Conference Leave', 'Sports Leave', 'Family Event Leave', 'Other'];
@@ -67,32 +68,44 @@ export function ApplyLeavePage() {
     setFileError(null);
   };
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     setFileError(null);
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check size limit: max 5MB
-    if (file.size > 5 * 1024 * 1024) {
-      setFileError('File exceeds 5MB size limit. Please choose a smaller file.');
-      return;
+    try {
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        if (file.size > 5 * 1024 * 1024) {
+          setFileError('PDF exceeds 5MB size limit. Please choose a smaller file.');
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          setForm((f) => ({
+            ...f,
+            documentName: file.name,
+            documentUrl: reader.result as string,
+            documentType: 'application/pdf',
+          }));
+        };
+        reader.onerror = () => {
+          setFileError('Could not read the selected PDF. Please try again.');
+        };
+        reader.readAsDataURL(file);
+      } else {
+        // High quality client-side compression for camera images and screenshots
+        const compressedUrl = await compressImage(file);
+        setForm((f) => ({
+          ...f,
+          documentName: file.name,
+          documentUrl: compressedUrl,
+          documentType: 'image/jpeg',
+        }));
+      }
+    } catch (err) {
+      console.error('File process error:', err);
+      setFileError('Could not process this file. Please try another image.');
     }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      const detectedType = file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
-      setForm((f) => ({
-        ...f,
-        documentName: file.name,
-        documentUrl: result,
-        documentType: detectedType,
-      }));
-    };
-    reader.onerror = () => {
-      setFileError('Could not read the selected file. Please try again.');
-    };
-    reader.readAsDataURL(file);
   };
 
   const removeFile = () => {

@@ -256,7 +256,22 @@ export function loadData(): AppData {
 }
 
 export function saveData(data: AppData): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (err) {
+    console.warn('localStorage quota reached, saving with slim leave cache:', err);
+    try {
+      const slim = {
+        ...data,
+        leaveRequests: data.leaveRequests.map((r, idx) =>
+          idx > 2 ? { ...r, documentUrl: undefined } : r
+        ),
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(slim));
+    } catch {
+      // Ignore fallback
+    }
+  }
 }
 
 export function resetData(): AppData {
