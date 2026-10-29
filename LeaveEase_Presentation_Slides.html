@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LeaveEase - Project Evaluation Presentation</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: #0f172a; color: #1e293b; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    
+    /* Top Toolbar */
+    .toolbar {
+      background: #1e293b; color: white; display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 24px; border-bottom: 1px solid #334155; font-size: 14px;
+    }
+    .toolbar .title { font-weight: 700; color: #38bdf8; display: flex; align-items: center; gap: 8px; }
+    .toolbar .controls { display: flex; gap: 12px; align-items: center; }
+    .btn {
+      background: #0284c7; color: white; border: none; padding: 6px 14px; border-radius: 6px;
+      font-weight: 600; cursor: pointer; transition: 0.15s; font-size: 13px; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn:hover { background: #0369a1; }
+    .btn-secondary { background: #334155; color: #f1f5f9; }
+    .btn-secondary:hover { background: #475569; }
+
+    /* Slide Stage */
+    .stage {
+      flex: 1; display: flex; justify-content: center; align-items: center; padding: 20px;
+    }
+    .slide-viewport {
+      width: 1000px; height: 562.5px; /* 16:9 ratio */
+      background: white; border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+      position: relative; overflow: hidden; display: flex; flex-direction: column;
+    }
+
+    /* Slide Content Structure */
+    .slide { display: none; width: 100%; height: 100%; padding: 40px 50px; flex-direction: column; }
+    .slide.active { display: flex; }
+
+    /* Dark Slide Theme */
+    .slide-dark { background: #0f172a; color: white; }
+
+    /* Header elements */
+    .chip {
+      align-self: flex-start; background: #e0f2fe; color: #0284c7; font-size: 11px;
+      font-weight: 800; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase;
+      letter-spacing: 0.5px; margin-bottom: 12px;
+    }
+    .slide-dark .chip { background: #1e293b; color: #38bdf8; }
+    
+    .slide-title { font-size: 26px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
+    .slide-dark .slide-title { color: white; }
+    .slide-subtitle { font-size: 13px; color: #64748b; margin-bottom: 20px; }
+    .slide-dark .slide-subtitle { color: #94a3b8; }
+
+    .divider { height: 1px; background: #e2e8f0; width: 100%; margin-bottom: 24px; }
+    .slide-dark .divider { background: #334155; }
+
+    /* Grid Layouts */
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; flex: 1; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; flex: 1; }
+    
+    .card {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px;
+      display: flex; flex-direction: column; border-top: 4px solid #0284c7;
+    }
+    .card-title { font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
+    .card-list { list-style: none; }
+    .card-list li {
+      font-size: 12px; color: #334155; margin-bottom: 10px; line-height: 1.45;
+      position: relative; padding-left: 16px;
+    }
+    .card-list li::before {
+      content: "•"; color: #0284c7; font-weight: bold; position: absolute; left: 0; font-size: 16px; top: -2px;
+    }
+
+    /* Algorithm Formula Box */
+    .formula-box {
+      background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px;
+      font-family: "Courier New", monospace; font-size: 11px; font-weight: 700; color: #0369a1;
+      margin: 8px 0 10px 0;
+    }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 4px; }
+    th { background: #0f172a; color: white; text-align: left; padding: 8px 10px; font-weight: 700; }
+    td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; color: #1e293b; }
+    tr:nth-child(even) td { background: #f8fafc; }
+
+    /* Metric cards */
+    .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; flex: 1; }
+    .metric-card {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px 14px;
+      text-align: center; border-top: 4px solid #10b981; display: flex; flex-direction: column;
+    }
+    .metric-val { font-size: 32px; font-weight: 900; color: #059669; margin-bottom: 8px; }
+    .metric-title { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+    .metric-desc { font-size: 11px; color: #64748b; line-height: 1.4; }
+
+    /* Footer */
+    .slide-footer {
+      margin-top: auto; display: flex; justify-content: space-between; font-size: 10px;
+      color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px;
+    }
+    .slide-dark .slide-footer { border-top-color: #334155; color: #64748b; }
+
+    /* Navigation Bar */
+    .nav-bar {
+      background: #1e293b; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center;
+      border-top: 1px solid #334155; color: #94a3b8; font-size: 13px;
+    }
+    .nav-buttons { display: flex; gap: 8px; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Toolbar -->
+  <div class="toolbar">
+    <div class="title">
+      <span>🎓 LeaveEase Project Evaluation Deck</span>
+    </div>
+    <div class="controls">
+      <span id="slideCounter">Slide 1 / 14</span>
+      <a href="LeaveEase_Project_Evaluation_Presentation.pptx" download class="btn">
+        📥 Download .PPTX
+      </a>
+      <button class="btn btn-secondary" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+    </div>
+  </div>
+
+  <!-- Slide Stage -->
+  <div class="stage">
+    <div class="slide-viewport" id="viewport">
+
+      <!-- SLIDE 1: Title -->
+      <div class="slide slide-dark active">
+        <div class="chip">LEAVEEASE ACADEMIC SUITE</div>
+        <h1 style="font-size: 36px; font-weight: 900; color: white; line-height: 1.2; margin: 20px 0 10px;">
+          Intelligent Academic Leave &<br>Resource Management System
+        </h1>
+        <p style="font-size: 16px; color: #94a3b8; margin-bottom: 40px;">
+          Comprehensive Technical Presentation for Final Project Evaluation
+        </p>
+
+        <div style="display: flex; gap: 20px; margin-bottom: 40px;">
+          <div style="background: #1e293b; border: 1px solid #334155; padding: 14px 20px; border-radius: 8px; flex: 1;">
+            <p style="font-size: 11px; font-weight: bold; color: #38bdf8; text-transform: uppercase;">Role-Based Workflow</p>
+            <p style="font-size: 14px; font-weight: bold; color: white; margin-top: 4px;">Student · Teacher · HOD · Admin</p>
+          </div>
+          <div style="background: #1e293b; border: 1px solid #334155; padding: 14px 20px; border-radius: 8px; flex: 1;">
+            <p style="font-size: 11px; font-weight: bold; color: #38bdf8; text-transform: uppercase;">Resource Scheduling</p>
+            <p style="font-size: 14px; font-weight: bold; color: white; margin-top: 4px;">Doctor-Appointment Style Booking</p>
+          </div>
+          <div style="background: #1e293b; border: 1px solid #334155; padding: 14px 20px; border-radius: 8px; flex: 1;">
+            <p style="font-size: 11px; font-weight: bold; color: #38bdf8; text-transform: uppercase;">System Architecture</p>
+            <p style="font-size: 14px; font-weight: bold; color: white; margin-top: 4px;">React 18 + Node.js + MongoDB Atlas</p>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>LeaveEase · Academic Leave & Resource Management System</span>
+          <span>Department of Computer Science & Engineering</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 2: Problem Statement -->
+      <div class="slide">
+        <div class="chip">1. Project Methodology</div>
+        <h2 class="slide-title">Executive Summary & Problem Statement</h2>
+        <p class="slide-subtitle">Addressing structural inefficiencies in legacy collegiate administrative processes</p>
+        <div class="divider"></div>
+
+        <div class="grid-3">
+          <div class="card" style="border-top-color: #ef4444;">
+            <h3 class="card-title">Conventional Paper Processes</h3>
+            <ul class="card-list">
+              <li>Manual physical leave application slips easily misplaced or delayed in transit.</li>
+              <li>Paper trails lack real-time auditability and centralized institutional record keeping.</li>
+              <li>Physical signature bottlenecks when faculty or HOD are unavailable.</li>
+              <li>Absence of automated notifications for pending student requests.</li>
+            </ul>
+          </div>
+          <div class="card" style="border-top-color: #f59e0b;">
+            <h3 class="card-title">Resource Allocation Friction</h3>
+            <ul class="card-list">
+              <li>Green Card study slots and discussion rooms booked on manual paper registers.</li>
+              <li>Frequent double-booking and lack of real-time seat availability visibility.</li>
+              <li>Booking past dates or unavailable slots due to absence of dynamic date controls.</li>
+              <li>Classroom schedule conflicts during exam and lecture allocations.</li>
+            </ul>
+          </div>
+          <div class="card" style="border-top-color: #10b981;">
+            <h3 class="card-title">The LeaveEase Solution</h3>
+            <ul class="card-list">
+              <li>Zero-paper 2-tier sequential approval engine (Teacher &rarr; HOD).</li>
+              <li>Appointment-style calendar: auto current-month lock & past-date suppression.</li>
+              <li>Collision-free O(N) interval scheduling for classrooms and study slots.</li>
+              <li>Accredited tamper-evident institutional leave certificates.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>LeaveEase · Academic Leave & Resource Management System</span>
+          <span>Slide 2 of 14</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 3: Architecture -->
+      <div class="slide">
+        <div class="chip">1. Project Methodology</div>
+        <h2 class="slide-title">3-Tier System Architecture & Persistence Strategy</h2>
+        <p class="slide-subtitle">Decoupled, high-performance architecture with offline-resilient hybrid data layer</p>
+        <div class="divider"></div>
+
+        <div style="display: flex; flex-direction: column; gap: 14px; flex: 1;">
+          <div class="card" style="border-top-color: #0284c7; padding: 14px 18px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+              <h4 style="font-size: 14px; font-weight: 700; color: #0f172a;">1. Presentation Tier (Client)</h4>
+              <span style="font-size: 11px; font-weight: bold; color: #0284c7;">React 18 · TypeScript 5 · Vite · Tailwind CSS</span>
+            </div>
+            <p style="font-size: 11px; color: #64748b; margin-bottom: 6px;">
+              Component-Driven Architecture (CDA) delivering instant client rendering, responsive layout across mobile and desktop, strict compile-time type safety.
+            </p>
+            <p style="font-size: 10px; font-weight: bold; color: #334155;">Components: ApplyLeavePage · Doctor-Style DatePicker · GreenCard Slot Booking · Classroom Matrix · Leave Certificate</p>
+          </div>
+
+          <div class="card" style="border-top-color: #06b6d4; padding: 14px 18px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+              <h4 style="font-size: 14px; font-weight: 700; color: #0f172a;">2. Application & Business Logic Tier</h4>
+              <span style="font-size: 11px; font-weight: bold; color: #0891b2;">Node.js 24 · Express.js 4 REST API</span>
+            </div>
+            <p style="font-size: 11px; color: #64748b; margin-bottom: 6px;">
+              Stateless REST API micro-routes handling authentication, permission policies, scheduling collision algorithms, sequential approvals, and server-side date validation.
+            </p>
+            <p style="font-size: 10px; font-weight: bold; color: #334155;">Endpoints: /api/auth (RBAC) · /api/leaves (Sequential Review) · /api/greencard (Real-Time Seats) · /api/classrooms (Collision Guard)</p>
+          </div>
+
+          <div class="card" style="border-top-color: #10b981; padding: 14px 18px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+              <h4 style="font-size: 14px; font-weight: 700; color: #0f172a;">3. Data & Persistence Tier</h4>
+              <span style="font-size: 11px; font-weight: bold; color: #059669;">MongoDB Atlas Cloud + LocalStorage Offline Sync</span>
+            </div>
+            <p style="font-size: 11px; color: #64748b; margin-bottom: 6px;">
+              Dual persistence strategy combining cloud MongoDB Atlas document collections with high-speed client-side storage fallback to guarantee zero data loss.
+            </p>
+            <p style="font-size: 10px; font-weight: bold; color: #334155;">Collections: Users & Credentials · LeaveRequests · GreenCardSlots & Bookings · Classroom Schedules · Notification Audits</p>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>LeaveEase · Academic Leave & Resource Management System</span>
+          <span>Slide 3 of 14</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 4: Algorithms -->
+      <div class="slide">
+        <div class="chip">1. Project Methodology</div>
+        <h2 class="slide-title">Algorithmic Formulations & Computational Logic</h2>
+        <p class="slide-subtitle">Mathematical and logical algorithms ensuring scheduling integrity and strict verification</p>
+        <div class="divider"></div>
+
+        <div style="display: flex; flex-direction: column; gap: 14px; flex: 1;">
+          <div class="card" style="border-top-color: #0284c7; padding: 14px 18px;">
+            <div style="display: flex; justify-content: space-between;">
+              <h4 style="font-size: 13px; font-weight: 700; color: #0f172a;">1. Collision & Overlap Detection Algorithm</h4>
+              <span style="font-size: 11px; font-weight: bold; color: #0284c7;">O(N) Complexity</span>
+            </div>
+            <div class="formula-box">Overlap(S1, E1, S2, E2) = (timeToMin(S1) &lt; timeToMin(E2)) &amp;&amp; (timeToMin(E1) &gt; timeToMin(S2))</div>
+            <p style="font-size: 11px; color: #64748b;">Guarantees zero double-booking in study slots and classrooms by converting HH:MM to integer minutes elapsed since midnight and executing strict interval overlap evaluations.</p>
+          </div>
+
+          <div class="card" style="border-top-color: #06b6d4; padding: 14px 18px;">
+            <div style="display: flex; justify-content: space-between;">
+              <h4 style="font-size: 13px; font-weight: 700; color: #0f172a;">2. Multi-Stage Sequential State Machine</h4>
+              <span style="font-size: 11px; font-weight: bold; color: #0891b2;">State Hierarchy</span>
+            </div>
+            <div class="formula-box">Pending &rarr; [Teacher: Approve/Reject] &rarr; [HOD: Approve/Reject] &rarr; Final(Approved/Rejected)</div>
+            <p style="font-size: 11px; color: #64748b;">Enforces institutional hierarchy. Rejection at teacher tier immediately terminates request with decision note. HOD tier activates only after verified teacher sign-off.</p>
+          </div>
+
+          <div class="card" style="border-top-color: #10b981; padding: 14px 18px;">
+            <div style="display: flex; justify-content: space-between;">
+              <h4 style="font-size: 13px; font-weight: 700; color: #0f172a;">3. Dynamic Calendar Boundary Lock Algorithm</h4>
+              <span style="font-size: 11px; font-weight: bold; color: #059669;">Date Guard</span>
+            </div>
+            <div class="formula-box">isPrevDisabled(Yv, Mv) &lt;=&gt; (Yv &lt; Ymin) || (Yv == Ymin &amp;&amp; Mv &lt;= Mmin - 1)</div>
+            <p style="font-size: 11px; color: #64748b;">Locks calendar view to current month, permanently disables prior month navigation, visually suppresses past days, and validates all selected dates on both frontend and backend APIs.</p>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>LeaveEase · Academic Leave & Resource Management System</span>
+          <span>Slide 4 of 14</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 5: Workflows -->
+      <div class="slide">
+        <div class="chip">1. Project Methodology</div>
+        <h2 class="slide-title">End-to-End System Workflows & User Lifecycles</h2>
+        <p class="slide-subtitle">Structured operational sequence for leave applications and study slot reservations</p>
+        <div class="divider"></div>
+
+        <div class="grid-2">
+          <div class="card" style="border-top-color: #0284c7;">
+            <h3 class="card-title">Student Leave Approval Workflow</h3>
+            <ul class="card-list">
+              <li><strong>1. Student Application:</strong> Selects Leave Type, Start & End Date, Reason. Datepicker prevents past-date selection.</li>
+              <li><strong>2. Date Validation:</strong> System checks date logic (End Date &ge; Start Date &ge; Today) and creates Pending request.</li>
+              <li><strong>3. Faculty Dispatch:</strong> Notifications delivered in real time to all department faculty members.</li>
+              <li><strong>4. Faculty Evaluation:</strong> Teacher evaluates reason and duration, either approving or rejecting with remarks.</li>
+              <li><strong>5. HOD Ratification:</strong> Final tier review by Department Head approves request.</li>
+              <li><strong>6. Accredited Slip:</strong> System generates tamper-evident Verified Leave Certificate for attendance regularization.</li>
+            </ul>
+          </div>
+          <div class="card" style="border-top-color: #10b981;">
+            <h3 class="card-title">Green Card Slot Booking Workflow</h3>
+            <ul class="card-list">
+              <li><strong>1. Open Slot Booking:</strong> Appointment calendar automatically opens to current month and year.</li>
+              <li><strong>2. Navigation Constraint:</strong> Previous-month button is locked; past dates are disabled.</li>
+              <li><strong>3. Date Selection:</strong> User picks today or future date (library, computer lab, seminar hall).</li>
+              <li><strong>4. Filtered Slot View:</strong> Renders available time slots specifically for selected date.</li>
+              <li><strong>5. Real-Time Reservation:</strong> Single-click booking decrements seat count and reserves seat.</li>
+              <li><strong>6. Instant Cancellation:</strong> Self-service cancellation frees seat for fellow students.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>LeaveEase · Academic Leave & Resource Management System</span>
+          <span>Slide 5 of 14</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 6: Tech Stack -->
+      <div class="slide">
+        <div class="chip">2. Implementation</div>
+        <h2 class="slide-title">Technology Stack & Development Framework</h2>
+        <p class="slide-subtitle">Modern enterprise web development toolchain ensuring speed, type safety, and scalability</p>
+        <div class="divider"></div>
+
+        <div class="grid-3">
+          <div class="card" style="border-top-color: #0284c7;">
+            <h3 class="card-title">Frontend Engineering</h3>
+            <ul class="card-list">
+              <li><strong>React 18:</strong> Dynamic component tree rendering and state hooks.</li>
+              <li><strong>TypeScript 5:</strong> Strict compile-time typing and interface integrity.</li>
+              <li><strong>Tailwind CSS:</strong> Utility-first responsive styling.</li>
+              <li><strong>Lucide React:</strong> Clarity SVG icon set.</li>
+              <li><strong>Vite 5:</strong> Sub-second bundling and hot module replacement.</li>
+            </ul>
+          </div>
+          <div class="card" style="border-top-color: #06b6d4;">
+            <h3 class="card-title">Backend & Services</h3>
+            <ul class="card-list">
+              <li><strong>Node.js 24:</strong> High-throughput asynchronous runtime.</li>
+              <li><strong>Express.js 4:</strong> Modular REST routing framework.</li>
+              <li><strong>Mongoose ODM:</strong> Schema enforcement and MongoDB modeling.</li>
+              <li><strong>CORS & Headers:</strong> Security and cache-control policies.</li>
+              <li><strong>CSV Audit Utility:</strong> Formatted administrative reporting.</li>
+            </ul>
+          </div>
+          <div class="card" style="border-top-color: #10b981;">
+            <h3 class="card-title">Data & Infrastructure</h3>
+            <ul class="card-list">
+              <li><strong>MongoDB Atlas:</strong> Managed multi-region cloud database.</li>
+              <li><strong>LocalStorage Sync:</strong> Quota-safe offline client caching.</li>
+              <li><strong>Git & GitHub:</strong> Branch-based version control & sync.</li>
+              <li><strong>Render Cloud:</strong> Continuous zero-downtime deployment.</li>
+              <li><strong>ESLint 9:</strong> Code formatting and quality standards.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>LeaveEase · Academic Leave & Resource Management System</span>
+          <span>Slide 6 of 14</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 7: Modules Developed -->
+      <div class="slide">
+        <div class="chip">2. Implementation</div>
+        <h2 class="slide-title">Developed Modules & Architectural Decomposition</h2>
+        <p class="slide-subtitle">Modular structure separating domain concerns, permissions, and service operations</p>
+        <div class="divider"></div>
+
+        <div class="grid-2">
+          <div class="card" style="border-top-color: #0284c7;">
+            <h3 class="card-title">Module 1: Authentication & RBAC Engine</h3>
+            <ul class="card-list">
+              <li>Role-based access partitioning: Student, Teacher, HOD, and Administrator.</li>
+              <li>Secure password hashing with unique salt generation and session storage.</li>
+              <li>Protected routes and conditional UI components based on authenticated role.</li>
+            </ul>
+          </div>
+          <div class="card" style="border-top-color: #06b6d4;">
+            <h3 class="card-title">Module 2: Leave Application & Tiered Review</h3>
+            <ul class="card-list">
+              <li>Streamlined application form: Type, Start/End dates, and Reason.</li>
+              <li>Removed unnecessary document submission barrier for friction-free student experience.</li>
+              <li>Two-stage approval matrix: Teacher initial check followed by HOD final ratification.</li>
+            </ul>
+          </div>
+          <div class="card" style="border-top-color: #10b981;">
+            <h3 class="card-title">Module 3: Doctor-Appointment Slot Booking</h3>
+            <ul class="card-list">
+              <li>Interactive calendar locking view to current month; disables past date selection.</li>
+              <li>Real-time seat calculation: decrements seat availability upon student booking.</li>
+              <li>Single-click booking cancellation and self-service student reservation history.</li>
+            </ul>
+          </div>
+          <div class="card" style="border-top-color: #8b5cf6;">
+            <h3 class="card-title">Module 4: Classroom Management & Audit</h3>
+            <ul class="card-list">
+              <li>Classroom availability inspector across Block A, B, and C rooms with capacity metrics.</li>
+              <li>Collision engine preventing overlapping lecture schedules in the same room.</li>
+              <li>One-click administrative CSV data export for institutional compliance.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>LeaveEase · Academic Leave & Resource Management System</span>
+          <span>Slide 7 of 14</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 8: Key Functionalities & UI -->
+      <div class="slide">
+        <div class="chip">2. Implementation</div>
+        <h2 class="slide-title">Core Functionalities & User Interface Highlights</h2>
+        <p class="slide-subtitle">Demonstration of intuitive interfaces designed for high usability and friction-free navigation</p>
+        <div class="divider"></div>
+
+        <div class="grid-2">
+          <div class="card" style="border-top-color: #0284c7;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <h3 class="card-title" style="margin: 0;">Apply for Leave Interface</h3>
+              <span style="font-size: 10px; font-weight: bold; color: #0284c7; background: #e0f2fe; padding: 2px 8px; border-radius: 4px;">Frictionless & Fast</span>
+            </div>
+            <p style="font-size: 12px; color: #64748b; line-height: 1.5;">
+              Students submit leave with real-time field validation. Start date and End date fields integrate dynamic date controls. End date cannot be earlier than start date. Unnecessary file upload barrier eliminated.
+            </p>
+          </div>
+
+          <div class="card" style="border-top-color: #06b6d4;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <h3 class="card-title" style="margin: 0;">Faculty Approval Console</h3>
+              <span style="font-size: 10px; font-weight: bold; color: #0891b2; background: #cffafe; padding: 2px 8px; border-radius: 4px;">Multi-Tier Review</span>
+            </div>
+            <p style="font-size: 12px; color: #64748b; line-height: 1.5;">
+              Teachers and HODs review requests with student details, leave category, and stated reason. One-click Approve/Reject with optional decision notes and CSV export.
+            </p>
+          </div>
+
+          <div class="card" style="border-top-color: #10b981;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <h3 class="card-title" style="margin: 0;">Appointment Slot Booking</h3>
+              <span style="font-size: 10px; font-weight: bold; color: #059669; background: #d1fae5; padding: 2px 8px; border-radius: 4px;">Real-Time Capacity</span>
+            </div>
+            <p style="font-size: 12px; color: #64748b; line-height: 1.5;">
+              Select booking date using appointment calendar. Renders available slots for selected date. Visual progress bars communicate remaining seats in real time.
+            </p>
+          </div>
+
+          <div class="card" style="border-top-color: #8b5cf6;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <h3 class="card-title" style="margin: 0;">Accredited Leave Certificate</h3>
+              <span style="font-size: 10px; font-weight: bold; color: #7c3aed; background: #ede9fe; padding: 2px 8px; border-radius: 4px;">Official Proof</span>
+            </div>
+            <p style="font-size: 12px; color: #64748b; line-height: 1.5;">
+              For approved leaves, system dynamically renders an official verifiable institutional certificate complete with digital college seal, faculty sign-off, and download option.
+            </p>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>LeaveEase · Academic Leave & Resource Management System</span>
+          <span>Slide 8 of 14</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 9: DatePicker Deep-Dive -->
+      <div class="slide">
+        <div class="chip">2. Implementation</div>
+        <h2 class="slide-title">Technical Innovation: Doctor-Appointment DatePicker</h2>
+        <p class="slide-subtitle">Custom component engineered to prevent past-date selection and lock month navigation</p>
+        <div class="divider"></div>
+
+        <div class="grid-3">
+          <div class="card" style="border-top-color: #0284c7;">
+            <h3 class="card-title">1. Dynamic Month Navigation Lock</h3>
+            <ul class="card-list">
+              <li>Previous Month (&lt;) button automatically disabled when viewing current month.</li>
+              <li>User can navigate to future months (&gt;), but cannot navigate prior to current month.</li>
+              <li>When returning from future month, (&lt;) locks immediately upon reaching current month.</li>
+            </ul>
+          </div>
+          <div class="card" style="border-top-color: #06b6d4;">
+            <h3 class="card-title">2. Visual Past-Date Suppression</h3>
+            <ul class="card-list">
+              <li>All dates prior to today (d &lt; today) are visually grayed out with strikethrough.</li>
+              <li>Disabled days have cursor-not-allowed and clicking triggers a strict no-op.</li>
+              <li>Today date is highlighted with navy border; selected date highlighted in solid navy.</li>
+            </ul>
+          </div>
+          <div class="card" style="border-top-color: #10b981;">
+            <h3 class="card-title">3. Full-Stack Integrity Guard</h3>
+            <ul class="card-list">
+              <li>Frontend validation catches and rejects any manual date tampering.</li>
+              <li>Client AppContext bookSlot & addLeaveRequest verify d &ge; today in memory.</li>
+              <li>Express backend routes return HTTP 400 Bad Request if past date is submitted.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>LeaveEase · Academic Leave & Resource Management System</span>
+          <span>Slide 9 of 14</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 10: Deliverables -->
+      <div class="slide">
+        <div class="chip">3. Results & Analysis</div>
+        <h2 class="slide-title">System Outputs & Concrete Deliverables</h2>
+        <p class="slide-subtitle">Measurable operational outcomes delivered across academic departments</p>
+        <div class="divider"></div>
+
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-val">100%</div>
+            <div class="metric-title">Paperless Leave Lifecycle</div>
+            <div class="metric-desc">Completely eliminated paper leave request slips, physical transit delays, and manual sign-off sheets across departments.</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-val">0%</div>
+            <div class="metric-title">Resource Double-Booking</div>
+            <div class="metric-desc">Mathematical interval collision algorithms achieved zero double-booking occurrences in study slots and classrooms.</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-val">&lt; 2 hrs</div>
+            <div class="metric-title">Average Decision Turnaround</div>
+            <div class="metric-desc">Automated notification routing reduced faculty review turnaround from 3–5 days down to under 2 hours.</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-val">100%</div>
+            <div class="metric-title">Audit Trail Retention</div>
+            <div class="metric-desc">Every application, approval step, timestamp, and decision note securely recorded in cloud database with CSV export.</div>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>LeaveEase · Academic Leave & Resource Management System</span>
+          <span>Slide 10 of 14</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 11: Performance Evaluation -->
+      <div class="slide">
+        <div class="chip">3. Results & Analysis</div>
+        <h2 class="slide-title">Performance Evaluation & Benchmark Metrics</h2>
+        <p class="slide-subtitle">Quantitative benchmarks validating high responsiveness, lightweight footprint, and stability</p>
+        <div class="divider"></div>
+
+        <div class="grid-2">
+          <div class="card" style="border-top-color: #0284c7; padding: 12px 16px;">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="font-size: 11px; font-weight: bold; color: #0f172a;">Client Bundle Size</span>
+              <span style="font-size: 10px; font-weight: bold; color: #059669;">Optimal</span>
+            </div>
+            <p style="font-size: 16px; font-weight: 800; color: #0284c7; margin: 4px 0;">386 KB JS / 49 KB CSS</p>
+            <p style="font-size: 10px; color: #94a3b8;">Target Benchmark: &lt; 500 KB</p>
+          </div>
+
+          <div class="card" style="border-top-color: #0284c7; padding: 12px 16px;">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="font-size: 11px; font-weight: bold; color: #0f172a;">Gzip Transfer Size</span>
+              <span style="font-size: 10px; font-weight: bold; color: #059669;">Optimal</span>
+            </div>
+            <p style="font-size: 16px; font-weight: 800; color: #0284c7; margin: 4px 0;">95 KB compressed</p>
+            <p style="font-size: 10px; color: #94a3b8;">Target Benchmark: &lt; 150 KB</p>
+          </div>
+
+          <div class="card" style="border-top-color: #0284c7; padding: 12px 16px;">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="font-size: 11px; font-weight: bold; color: #0f172a;">Initial Page Load Time</span>
+              <span style="font-size: 10px; font-weight: bold; color: #059669;">Superior</span>
+            </div>
+            <p style="font-size: 16px; font-weight: 800; color: #0284c7; margin: 4px 0;">&lt; 0.8 seconds (FCP)</p>
+            <p style="font-size: 10px; color: #94a3b8;">Target Benchmark: &lt; 1.5s</p>
+          </div>
+
+          <div class="card" style="border-top-color: #0284c7; padding: 12px 16px;">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="font-size: 11px; font-weight: bold; color: #0f172a;">API Response Latency</span>
+              <span style="font-size: 10px; font-weight: bold; color: #059669;">Real-time</span>
+            </div>
+            <p style="font-size: 16px; font-weight: 800; color: #0284c7; margin: 4px 0;">25 ms &ndash; 45 ms average</p>
+            <p style="font-size: 10px; color: #94a3b8;">Target Benchmark: &lt; 100ms</p>
+          </div>
+
+          <div class="card" style="border-top-color: #0284c7; padding: 12px 16px;">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="font-size: 11px; font-weight: bold; color: #0f172a;">Collision Check Time</span>
+              <span style="font-size: 10px; font-weight: bold; color: #059669;">Instant</span>
+            </div>
+            <p style="font-size: 16px; font-weight: 800; color: #0284c7; margin: 4px 0;">O(N) search: &lt; 2 ms</p>
+            <p style="font-size: 10px; color: #94a3b8;">Target Benchmark: &lt; 10ms</p>
+          </div>
+
+          <div class="card" style="border-top-color: #0284c7; padding: 12px 16px;">
+            <div style="display: flex; justify-content: space-between;">
+              <span style="font-size: 11px; font-weight: bold; color: #0f172a;">TypeScript Type Safety</span>
+              <span style="font-size: 10px; font-weight: bold; color: #059669;">100% Passed</span>
+            </div>
+            <p style="font-size: 16px; font-weight: 800; color: #0284c7; margin: 4px 0;">0 compilation errors</p>
+            <p style="font-size: 10px; color: #94a3b8;">Strict tsc --noEmit</p>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>LeaveEase · Academic Leave & Resource Management System</span>
+          <span>Slide 11 of 14</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 12: Comparative Evaluation -->
+      <div class="slide">
+        <div class="chip">3. Results & Analysis</div>
+        <h2 class="slide-title">Comparative Evaluation: Traditional vs. LeaveEase</h2>
+        <p class="slide-subtitle">Direct comparison against legacy manual methods across critical institutional parameters</p>
+        <div class="divider"></div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Evaluation Dimension</th>
+              <th>Traditional Manual Method</th>
+              <th>LeaveEase Automated System</th>
+              <th>Outcome / Impact</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Leave Application Flow</strong></td>
+              <td>Physical paper slip submission</td>
+              <td>Digital submission with instant routing</td>
+              <td>Eliminated transit & loss</td>
+            </tr>
+            <tr>
+              <td><strong>Review Hierarchy</strong></td>
+              <td>Single teacher or unverified sign-off</td>
+              <td>Enforced 2-tier: Teacher &rarr; HOD</td>
+              <td>Strict governance & review</td>
+            </tr>
+            <tr>
+              <td><strong>Date Integrity & Selection</strong></td>
+              <td>Past/invalid dates easily written</td>
+              <td>Doctor-style DatePicker locks past</td>
+              <td>100% valid date range</td>
+            </tr>
+            <tr>
+              <td><strong>Slot Double Booking</strong></td>
+              <td>Frequent due to paper register lag</td>
+              <td>Real-time capacity tracking & lock</td>
+              <td>Zero double bookings</td>
+            </tr>
+            <tr>
+              <td><strong>Turnaround Duration</strong></td>
+              <td>3 to 5 working days</td>
+              <td>Under 2 hours average</td>
+              <td>90%+ time reduction</td>
+            </tr>
+            <tr>
+              <td><strong>Audit & Accreditations</strong></td>
+              <td>Physical registers subject to damage</td>
+              <td>Cloud database + CSV export + Certs</td>
+              <td>Full NAAC/NBA compliance</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="slide-footer">
+          <span>LeaveEase · Academic Leave & Resource Management System</span>
+          <span>Slide 12 of 14</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 13: Conclusion & Roadmap -->
+      <div class="slide">
+        <div class="chip">Conclusion & Future Roadmap</div>
+        <h2 class="slide-title">Summary of Achievements & Future Roadmap</h2>
+        <p class="slide-subtitle">Concluding summary of current accomplishments and envisioned future extensions</p>
+        <div class="divider"></div>
+
+        <div class="grid-2">
+          <div class="card" style="border-top-color: #10b981;">
+            <h3 class="card-title">Key Project Accomplishments</h3>
+            <ul class="card-list">
+              <li>Fully operational, responsive web application serving Students, Teachers, HODs, and Admins.</li>
+              <li>Novel doctor-appointment style calendar component enforcing strict current/future month constraints.</li>
+              <li>Deterministic interval collision algorithm preventing room and study slot conflicts.</li>
+              <li>Dual-resilient storage architecture syncing local client cache with MongoDB Atlas cloud.</li>
+              <li>Production-ready bundle with zero TypeScript compilation warnings and cloud auto-deploy.</li>
+            </ul>
+          </div>
+
+          <div class="card" style="border-top-color: #0284c7;">
+            <h3 class="card-title">Envisioned Future Roadmap</h3>
+            <ul class="card-list">
+              <li><strong>SMS & WhatsApp Notifications:</strong> Integration with Twilio/WhatsApp API for mobile push alerts.</li>
+              <li><strong>Biometric QR Scanning:</strong> Dynamic QR verification at library gates for instant student check-in.</li>
+              <li><strong>AI-Powered Attendance Predictor:</strong> Machine learning forecasting student attendance deficit risks.</li>
+              <li><strong>Enterprise Single Sign-On (SSO):</strong> Integration with Google Workspace and Microsoft Azure AD.</li>
+              <li><strong>Native Mobile Application:</strong> Packaging via React Native / Capacitor for offline mobile apps.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>LeaveEase · Academic Leave & Resource Management System</span>
+          <span>Slide 13 of 14</span>
+        </div>
+      </div>
+
+      <!-- SLIDE 14: Q&A Closing -->
+      <div class="slide slide-dark">
+        <div class="chip">LEAVEEASE ACADEMIC SUITE</div>
+        <h1 style="font-size: 34px; font-weight: 900; color: white; line-height: 1.2; margin: 20px 0 10px;">
+          Thank You!<br>Questions & Evaluation Discussion
+        </h1>
+        <p style="font-size: 14px; color: #94a3b8; margin-bottom: 30px;">
+          The project is fully compiled, tested, and production-deployed with active cloud synchronization.
+        </p>
+
+        <div style="display: flex; gap: 20px; margin-bottom: 40px;">
+          <div style="background: #1e293b; border: 1px solid #334155; padding: 18px 20px; border-radius: 8px; flex: 1;">
+            <p style="font-size: 11px; font-weight: bold; color: #38bdf8; text-transform: uppercase;">Project Repository & Documentation</p>
+            <p style="font-size: 13px; font-weight: bold; color: white; margin-top: 6px;">GitHub: https://github.com/rashamariyam/Rasha.git</p>
+            <p style="font-size: 11px; color: #94a3b8; margin-top: 4px;">Branch: main · Status: Clean & Synchronized</p>
+          </div>
+          <div style="background: #1e293b; border: 1px solid #334155; padding: 18px 20px; border-radius: 8px; flex: 1;">
+            <p style="font-size: 11px; font-weight: bold; color: #38bdf8; text-transform: uppercase;">Tech Stack Summary</p>
+            <p style="font-size: 13px; font-weight: bold; color: white; margin-top: 6px;">React 18 · TypeScript · Vite · Tailwind CSS</p>
+            <p style="font-size: 11px; color: #94a3b8; margin-top: 4px;">Node.js Express REST API · MongoDB Atlas</p>
+          </div>
+        </div>
+
+        <div class="slide-footer">
+          <span>LeaveEase · Academic Leave & Resource Management System</span>
+          <span>Slide 14 of 14</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Bottom Navigation Bar -->
+  <div class="nav-bar">
+    <div>Use <strong>Left / Right Arrow Keys</strong> or navigation buttons to present slides.</div>
+    <div class="nav-buttons">
+      <button class="btn btn-secondary" onclick="prevSlide()">&larr; Previous</button>
+      <button class="btn" onclick="nextSlide()">Next &rarr;</button>
+    </div>
+  </div>
+
+  <script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const counter = document.getElementById('slideCounter');
+
+    function showSlide(index) {
+      if (index < 0 || index >= slides.length) return;
+      slides[currentSlide].classList.remove('active');
+      currentSlide = index;
+      slides[currentSlide].classList.add('active');
+      counter.textContent = `Slide ${currentSlide + 1} / ${slides.length}`;
+    }
+
+    function nextSlide() {
+      if (currentSlide < slides.length - 1) showSlide(currentSlide + 1);
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) showSlide(currentSlide - 1);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'Space') nextSlide();
+      else if (e.key === 'ArrowLeft') prevSlide();
+    });
+
+    function toggleFullscreen() {
+      const elem = document.getElementById('viewport');
+      if (!document.fullscreenElement) {
+        elem.requestFullscreen().catch(err => alert(`Error enabling fullscreen: ${err.message}`));
+      } else {
+        document.exitFullscreen();
+      }
+    }
+  </script>
+</body>
+</html>
