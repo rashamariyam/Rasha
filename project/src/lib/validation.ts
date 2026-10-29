@@ -107,3 +107,4 @@ export function validateInteger(
 
   return { isValid: true, error: null };
 }
+
