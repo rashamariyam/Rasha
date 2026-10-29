@@ -3,7 +3,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "build": "npm --prefix project install --include=dev && npm --prefix project run build && npm install && npm --prefix server install",
+    "build": "npm --prefix project install --include=dev && npm --prefix project run build && npm install && npm --prefix server install && node -e \"const fs=require('fs'); fs.cpSync('project/dist', 'dist', {recursive:true}); fs.cpSync('project/dist', 'LeaveEase-Website-Export', {recursive:true});\"",
     "dev": "npm --prefix project run dev",
     "server": "npm --prefix server start",
     "server:dev": "npm --prefix server run dev",
