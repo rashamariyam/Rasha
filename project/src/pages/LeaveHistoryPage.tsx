@@ -7,8 +7,7 @@ import { SearchBar } from '@/components/layout/Topbar';
 import { Modal } from '@/components/ui/Modal';
 import { DocumentViewerModal } from '@/components/ui/DocumentViewerModal';
 import { formatDate, formatDateTime, toCSV, downloadCSV } from '@/lib/utils';
-import { downloadDocument, getDocumentUrl } from '@/lib/documentUtils';
-import { ClipboardList, Download, Eye, FileText, Paperclip, ShieldCheck } from 'lucide-react';
+import { ClipboardList, Download, Eye, FileText, ShieldCheck } from 'lucide-react';
 import type { LeaveRequest } from '@/types';
 
 export function LeaveHistoryPage() {
@@ -17,7 +16,6 @@ export function LeaveHistoryPage() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [viewReq, setViewReq] = useState<LeaveRequest | null>(null);
   const [viewingDoc, setViewingDoc] = useState<LeaveRequest | null>(null);
-  const [docModalMode, setDocModalMode] = useState<'attachment' | 'verified'>('attachment');
 
   if (!currentUser) return null;
 
@@ -35,7 +33,6 @@ export function LeaveHistoryPage() {
       StartDate: r.startDate,
       EndDate: r.endDate,
       Reason: r.reason,
-      Document: r.documentName || 'None',
       Status: r.status,
       TeacherApproved: r.teacherApproved,
       HODApproved: r.hodApproved,
@@ -84,7 +81,6 @@ export function LeaveHistoryPage() {
                   <th className="px-5 py-3">Leave Type</th>
                   <th className="px-5 py-3">Start Date</th>
                   <th className="px-5 py-3">End Date</th>
-                  <th className="px-5 py-3">Attached File</th>
                   <th className="px-5 py-3">Teacher</th>
                   <th className="px-5 py-3">HOD</th>
                   <th className="px-5 py-3">Status</th>
@@ -97,24 +93,6 @@ export function LeaveHistoryPage() {
                     <td className="px-5 py-3 font-medium text-gray-800">{r.leaveType}</td>
                     <td className="px-5 py-3 text-gray-600">{formatDate(r.startDate)}</td>
                     <td className="px-5 py-3 text-gray-600">{formatDate(r.endDate)}</td>
-                    <td className="px-5 py-3">
-                      {r.documentName ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDocModalMode('attachment');
-                            setViewingDoc(r);
-                          }}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50/80 px-2.5 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition shadow-2xs"
-                          title="Click to view submitted document"
-                        >
-                          <Paperclip size={13} className="text-indigo-600" />
-                          <span className="max-w-[100px] truncate">{r.documentName}</span>
-                        </button>
-                      ) : (
-                        <span className="text-xs text-gray-400">None</span>
-                      )}
-                    </td>
                     <td className="px-5 py-3">
                       {r.teacherApproved ? <StatusBadge status="approved" /> : <StatusBadge status="pending" />}
                     </td>
@@ -129,9 +107,20 @@ export function LeaveHistoryPage() {
                     </td>
                     <td className="px-5 py-3"><StatusBadge status={r.status} /></td>
                     <td className="px-5 py-3">
-                      <button onClick={() => setViewReq(r)} className="rounded-lg p-1.5 text-navy-600 hover:bg-navy-50" title="View Details">
-                        <Eye size={18} />
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => setViewReq(r)} className="rounded-lg p-1.5 text-navy-600 hover:bg-navy-50" title="View Details">
+                          <Eye size={18} />
+                        </button>
+                        {r.status === 'approved' && (
+                          <button
+                            onClick={() => setViewingDoc(r)}
+                            className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition border border-emerald-200"
+                            title="View Official Certificate"
+                          >
+                            <ShieldCheck size={14} /> Certificate
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -165,69 +154,29 @@ export function LeaveHistoryPage() {
               <InfoRow label="Submitted On" value={formatDateTime(viewReq.createdAt)} />
             </div>
 
-            {/* Supporting Document Section */}
-            <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Student Attached File</p>
-                    {viewReq.status === 'approved' ? (
-                      <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
-                        ✓ Verified &amp; Approved
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-                        ⏳ Pending Approval
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-1 flex items-center gap-2">
-                    <Paperclip size={16} className={viewReq.documentName ? "text-indigo-600" : "text-gray-400"} />
-                    <span className="text-sm font-semibold text-gray-900">
-                      {viewReq.documentName || 'No document uploaded'}
+            {viewReq.status === 'approved' && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                      ✓ Approved &amp; Certified
                     </span>
+                    <p className="mt-1 text-xs text-emerald-700">
+                      Official verified leave certificate generated by college administration.
+                    </p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewingDoc(viewReq);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-800 transition"
+                  >
+                    <ShieldCheck size={14} /> View Certificate
+                  </button>
                 </div>
-                {viewReq.documentName && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDocModalMode('attachment');
-                        setViewingDoc(viewReq);
-                      }}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 transition"
-                      title="Inspect your uploaded file"
-                    >
-                      <Eye size={14} /> View Attached File
-                    </button>
-                    {viewReq.status === 'approved' && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDocModalMode('verified');
-                          setViewingDoc(viewReq);
-                        }}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-800 transition"
-                        title="Download official verified certificate"
-                      >
-                        <ShieldCheck size={14} /> Verified Certificate
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const doc = getDocumentUrl(viewReq);
-                        downloadDocument(doc.url, viewReq.documentName || 'student_attachment');
-                      }}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
-                    >
-                      <Download size={14} /> Download
-                    </button>
-                  </div>
-                )}
               </div>
-            </div>
+            )}
 
             <div className="rounded-lg bg-gray-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Reason</p>
@@ -249,13 +198,12 @@ export function LeaveHistoryPage() {
         )}
       </Modal>
 
-      {/* Document Viewer Modal */}
+      {/* Verified Certificate Viewer Modal (for approved leaves) */}
       <DocumentViewerModal
         open={!!viewingDoc}
         onClose={() => setViewingDoc(null)}
-        documentName={viewingDoc?.documentName}
-        documentUrl={viewingDoc?.documentUrl}
-        documentType={viewingDoc?.documentType}
+        documentName="Official_Leave_Certificate.pdf"
+        documentType="application/pdf"
         studentName={viewingDoc?.studentName}
         rollNo={viewingDoc?.rollNo}
         department={viewingDoc?.department}
@@ -270,7 +218,7 @@ export function LeaveHistoryPage() {
         decidedBy={viewingDoc?.decidedBy}
         decidedAt={viewingDoc?.decidedAt}
         decisionNote={viewingDoc?.decisionNote}
-        initialMode={docModalMode}
+        initialMode="verified"
       />
     </div>
   );

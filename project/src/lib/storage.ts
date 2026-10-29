@@ -144,7 +144,6 @@ export function seedData(): AppData {
       reason: 'Fever and cold, unable to attend classes', status: 'approved',
       teacherApproved: true, hodApproved: true, createdAt: isoHoursFromNow(-72),
       decidedBy: 'Dr. Rajesh Nair', decidedAt: isoHoursFromNow(-48), decisionNote: 'Approved. Get well soon.',
-      documentName: 'doctor_prescription_slip.pdf',
     },
     {
       id: uid('lv'), studentId: 'u_student1', studentName: 'Arjun Sharma', rollNo: 'CS21B001',
@@ -157,7 +156,6 @@ export function seedData(): AppData {
       department: 'Electronics', leaveType: 'Sick Leave', startDate: isoDaysFromNow(1), endDate: isoDaysFromNow(2),
       reason: 'Medical appointment', status: 'pending',
       teacherApproved: false, hodApproved: false, createdAt: isoHoursFromNow(-12),
-      documentName: 'hospital_appointment_slip.pdf',
     },
     {
       id: uid('lv'), studentId: 'u_student3', studentName: 'Rohan Verma', rollNo: 'ME20B042',
@@ -165,7 +163,6 @@ export function seedData(): AppData {
       reason: 'Attending national tech conference', status: 'rejected',
       teacherApproved: true, hodApproved: false, createdAt: isoHoursFromNow(-30),
       decidedBy: 'Dr. Lakshmi Iyer', decidedAt: isoHoursFromNow(-20), decisionNote: 'Conference not on approved list.',
-      documentName: 'conference_invitation_letter.pdf',
     },
   ];
 
@@ -234,17 +231,7 @@ export function loadData(): AppData {
               : 'STU-001'),
         }));
       }
-      if (parsed.leaveRequests && parsed.leaveRequests.length > 0) {
-        parsed.leaveRequests = parsed.leaveRequests.map((r) => {
-          if (!r.documentName && r.studentName === 'Priya Patel') {
-            return { ...r, documentName: 'hospital_appointment_slip.pdf' };
-          }
-          if (!r.documentName && r.leaveType === 'Sick Leave' && r.status === 'approved') {
-            return { ...r, documentName: 'doctor_prescription_slip.pdf' };
-          }
-          return r;
-        });
-      }
+      
       return parsed;
     }
   } catch {
