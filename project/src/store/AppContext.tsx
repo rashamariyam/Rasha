@@ -14,6 +14,7 @@ import type {
 } from '@/types';
 import { loadData, saveData, resetData, uid, isoHoursFromNow } from '@/lib/storage';
 import { getLocalDateString } from '@/lib/utils';
+import { validatePhone } from '@/lib/validation';
 import {
   hashPassword,
   verifyPassword,
@@ -395,6 +396,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Check duplicate email
       if (data.users.some((u) => u.email.toLowerCase() === cleanEmail)) {
         return { success: false, error: 'An account with this email address already exists.' };
+      }
+
+      // Validate phone number if provided
+      if (studentData.phone && studentData.phone.trim()) {
+        const phoneRes = validatePhone(studentData.phone);
+        if (!phoneRes.isValid) {
+          toast('error', phoneRes.error || 'Please enter a valid 10-digit mobile number');
+          return { success: false, error: phoneRes.error || 'Please enter a valid 10-digit mobile number' };
+        }
       }
 
       // Check duplicate roll number
@@ -866,6 +876,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const curToday = getLocalDateString();
       if (slot.date < curToday) {
         toast('error', 'Slot date cannot be in the past');
+        return;
+      }
+      if (slot.capacity !== undefined && (isNaN(Number(slot.capacity)) || Number(slot.capacity) < 1)) {
+        toast('error', 'Capacity must be at least 1');
         return;
       }
       update((d) => ({

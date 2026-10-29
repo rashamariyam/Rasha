@@ -21,6 +21,11 @@ router.post('/slots', async (req, res) => {
     if (!date || date < today) {
       return res.status(400).json({ success: false, error: 'Slot date cannot be in the past' });
     }
+
+    const capNum = Number(capacity);
+    if (isNaN(capNum) || capNum < 1 || capNum > 1000 || !Number.isInteger(capNum)) {
+      return res.status(400).json({ success: false, error: 'Capacity must be an integer between 1 and 1000' });
+    }
     const newSlot = new GreenCardSlot({
       id: 'gc_' + Date.now(),
       title,

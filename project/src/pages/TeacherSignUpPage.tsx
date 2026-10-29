@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '@/store/AppContext';
+import { PhoneInput } from '@/components/ui/PhoneInput';
+import { validatePhone } from '@/lib/validation';
 import {
   BookOpen,
   ArrowLeft,
@@ -64,6 +66,13 @@ export function TeacherSignUpPage({ onNavigate }: TeacherSignUpPageProps) {
 
     if (!form.rollNo.trim()) {
       errs.rollNo = 'Faculty / Employee ID is required';
+    }
+
+    if (form.phone.trim()) {
+      const phoneRes = validatePhone(form.phone);
+      if (!phoneRes.isValid) {
+        errs.phone = phoneRes.error || 'Please enter a valid 10-digit mobile number';
+      }
     }
 
     if (!form.password) {
@@ -271,17 +280,16 @@ export function TeacherSignUpPage({ onNavigate }: TeacherSignUpPageProps) {
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-700">
                   Phone Number (Optional)
                 </label>
-                <div className="relative">
-                  <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    id="teacher-phone-input"
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    placeholder="e.g. +91 9876543213"
-                    className="w-full rounded-xl border border-gray-300 py-2.5 pl-10 pr-3.5 text-sm text-gray-900 placeholder-gray-400 focus:border-navy-600 focus:outline-none focus:ring-2 focus:ring-navy-100"
-                  />
-                </div>
+                <PhoneInput
+                  id="teacher-phone-input"
+                  value={form.phone}
+                  error={errors.phone}
+                  onChange={(phone) => {
+                    setForm({ ...form, phone });
+                    if (errors.phone) setErrors((e) => ({ ...e, phone: '' }));
+                  }}
+                  placeholder="9876543210"
+                />
               </div>
             </div>
 

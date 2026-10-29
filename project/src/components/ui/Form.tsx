@@ -15,8 +15,24 @@ export function Field({ label, required, error, children }: { label: string; req
   );
 }
 
-export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cn(baseInput, className)} {...props} />;
+export function Input({ className, onKeyDown, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // For numeric fields that require non-negative integers, reject e, E, +, -, and decimals
+    if (props.type === 'number') {
+      const minVal = props.min !== undefined ? Number(props.min) : undefined;
+      if (minVal !== undefined && minVal >= 0) {
+        if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') {
+          e.preventDefault();
+        }
+      }
+      if (props.step === '1' && e.key === '.') {
+        e.preventDefault();
+      }
+    }
+    onKeyDown?.(e);
+  };
+
+  return <input className={cn(baseInput, className)} onKeyDown={handleKeyDown} {...props} />;
 }
 
 export function Select({ className, children, ...props }: SelectHTMLAttributes<HTMLSelectElement> & { children: ReactNode }) {

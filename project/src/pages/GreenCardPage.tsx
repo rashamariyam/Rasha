@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button, EmptyState, Field, Input } from '@/components/ui/Form';
 import { Modal, ConfirmDialog } from '@/components/ui/Modal';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { validateInteger } from '@/lib/validation';
 import { formatDate, formatTime, toCSV, downloadCSV, getLocalDateString, cn } from '@/lib/utils';
 import { CalendarCheck, Plus, Trash2, Edit, Download, Users, Clock, Calendar, Check, X, CalendarDays, Filter } from 'lucide-react';
 import type { GreenCardSlot } from '@/types';
@@ -63,7 +64,8 @@ export function GreenCardPage() {
     if (!form.startTime) e.startTime = 'Start time is required';
     if (!form.endTime) e.endTime = 'End time is required';
     if (form.startTime && form.endTime && form.startTime >= form.endTime) e.endTime = 'End time must be after start time';
-    if (form.capacity < 1) e.capacity = 'Capacity must be at least 1';
+    const capRes = validateInteger(form.capacity, 'Capacity', 1, 1000);
+    if (!capRes.isValid) e.capacity = capRes.error || 'Capacity must be between 1 and 1000';
     
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -337,7 +339,19 @@ export function GreenCardPage() {
             </Field>
           </div>
           <Field label="Capacity" required error={errors.capacity}>
-            <Input type="number" min={1} value={form.capacity} onChange={(e) => setForm((f) => ({ ...f, capacity: Number(e.target.value) }))} />
+            <Input
+              type="number"
+              min={1}
+              max={1000}
+              step="1"
+              value={form.capacity}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '');
+                setForm((f) => ({ ...f, capacity: val !== '' ? Number(val) : ('' as unknown as number) }));
+                if (errors.capacity) setErrors((err) => ({ ...err, capacity: '' }));
+              }}
+              placeholder="e.g. 20"
+            />
           </Field>
         </div>
       </Modal>

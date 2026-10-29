@@ -6,6 +6,8 @@ import { Button, EmptyState, Field, Input, Select } from '@/components/ui/Form';
 import { SearchBar } from '@/components/layout/Topbar';
 import { Modal, ConfirmDialog } from '@/components/ui/Modal';
 import { toCSV, downloadCSV } from '@/lib/utils';
+import { PhoneInput } from '@/components/ui/PhoneInput';
+import { validatePhone } from '@/lib/validation';
 import {
   Users,
   Plus,
@@ -143,6 +145,13 @@ export function UserManagementPage() {
       e.password = 'Initial password is required';
     } else if (!editUser && form.password.length < 6) {
       e.password = 'Password must be at least 6 characters';
+    }
+
+    if (form.phone.trim()) {
+      const phoneRes = validatePhone(form.phone);
+      if (!phoneRes.isValid) {
+        e.phone = phoneRes.error || 'Please enter a valid 10-digit mobile number';
+      }
     }
 
     if (!form.rollNo.trim()) {
@@ -575,12 +584,15 @@ export function UserManagementPage() {
               />
             </Field>
 
-            <Field label="Phone Number (Optional)">
-              <Input
-                type="tel"
+            <Field label="Phone Number (Optional)" error={errors.phone}>
+              <PhoneInput
                 value={form.phone}
-                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                placeholder="+91 9876543210"
+                error={errors.phone}
+                onChange={(phone) => {
+                  setForm((f) => ({ ...f, phone }));
+                  if (errors.phone) setErrors((e) => ({ ...e, phone: '' }));
+                }}
+                placeholder="9876543210"
               />
             </Field>
           </div>

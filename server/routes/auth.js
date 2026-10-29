@@ -95,6 +95,20 @@ router.post('/register-student', async (req, res) => {
       return res.status(400).json({ success: false, error: 'All required fields must be filled.' });
     }
 
+    if (phone && phone.trim()) {
+      const cleanPhone = phone.trim().replace(/\D/g, '');
+      if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+        return res.status(400).json({ success: false, error: 'Please enter a valid 10-digit mobile number' });
+      }
+    }
+
+    if (semester !== undefined) {
+      const semNum = Number(semester);
+      if (isNaN(semNum) || semNum < 1 || semNum > 8) {
+        return res.status(400).json({ success: false, error: 'Semester must be a valid number between 1 and 8' });
+      }
+    }
+
     const cleanEmail = email.trim().toLowerCase();
     const cleanRollNo = rollNo.trim().toUpperCase();
 
@@ -152,6 +166,13 @@ router.post('/register-teacher', async (req, res) => {
     const { name, email, rollNo, department, phone, password, inviteCode } = req.body;
     if (!name || !email || !rollNo || !password) {
       return res.status(400).json({ success: false, error: 'All required fields must be filled.' });
+    }
+
+    if (phone && phone.trim()) {
+      const cleanPhone = phone.trim().replace(/\D/g, '');
+      if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+        return res.status(400).json({ success: false, error: 'Please enter a valid 10-digit mobile number' });
+      }
     }
 
     const cleanEmail = email.trim().toLowerCase();

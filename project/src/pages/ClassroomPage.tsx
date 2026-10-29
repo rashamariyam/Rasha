@@ -7,6 +7,7 @@ import { Modal, ConfirmDialog } from '@/components/ui/Modal';
 import { SearchBar } from '@/components/layout/Topbar';
 import { formatDate, formatTime, rangesOverlap, toCSV, downloadCSV, getLocalDateString } from '@/lib/utils';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { validateInteger } from '@/lib/validation';
 import {
   DoorOpen, Search as SearchIcon, Plus, Edit, Trash2, Download,
   Calendar, Clock, Users, Building, Check, X,
@@ -76,7 +77,10 @@ export function ClassroomPage() {
     const e: Record<string, string> = {};
     if (!roomForm.roomNumber.trim()) e.roomNumber = 'Room number is required';
     if (!roomForm.building.trim()) e.building = 'Building is required';
-    if (roomForm.capacity < 1) e.capacity = 'Capacity must be at least 1';
+    const capRes = validateInteger(roomForm.capacity, 'Capacity', 1, 1000);
+    if (!capRes.isValid) e.capacity = capRes.error || 'Capacity must be between 1 and 1000';
+    const floorRes = validateInteger(roomForm.floor, 'Floor', 0, 50);
+    if (!floorRes.isValid) e.floor = floorRes.error || 'Floor must be between 0 and 50';
     setRoomErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -293,11 +297,33 @@ export function ClassroomPage() {
             <Input value={roomForm.building} onChange={(e) => setRoomForm((f) => ({ ...f, building: e.target.value }))} placeholder="e.g. Block A" />
           </Field>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Floor" required>
-              <Input type="number" min={0} value={roomForm.floor} onChange={(e) => setRoomForm((f) => ({ ...f, floor: Number(e.target.value) }))} />
+            <Field label="Floor" required error={roomErrors.floor}>
+              <Input
+                type="number"
+                min={0}
+                max={50}
+                step="1"
+                value={roomForm.floor}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  setRoomForm((f) => ({ ...f, floor: val !== '' ? Number(val) : ('' as unknown as number) }));
+                  if (roomErrors.floor) setRoomErrors((err) => ({ ...err, floor: '' }));
+                }}
+              />
             </Field>
             <Field label="Capacity" required error={roomErrors.capacity}>
-              <Input type="number" min={1} value={roomForm.capacity} onChange={(e) => setRoomForm((f) => ({ ...f, capacity: Number(e.target.value) }))} />
+              <Input
+                type="number"
+                min={1}
+                max={1000}
+                step="1"
+                value={roomForm.capacity}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  setRoomForm((f) => ({ ...f, capacity: val !== '' ? Number(val) : ('' as unknown as number) }));
+                  if (roomErrors.capacity) setRoomErrors((err) => ({ ...err, capacity: '' }));
+                }}
+              />
             </Field>
           </div>
         </div>
