@@ -37,6 +37,16 @@ router.post('/', async (req, res) => {
       documentType
     } = req.body;
 
+    // Server-side date integrity check: reject past dates and invalid ranges
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    if (!startDate || startDate < today) {
+      return res.status(400).json({ success: false, error: 'Leave start date cannot be in the past' });
+    }
+    if (!endDate || endDate < startDate) {
+      return res.status(400).json({ success: false, error: 'Leave end date cannot be earlier than start date' });
+    }
+
     const id = req.body.id || ('lv_' + Date.now());
     const createdAt = req.body.createdAt || new Date().toISOString();
 

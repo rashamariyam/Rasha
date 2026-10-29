@@ -167,6 +167,8 @@ export function seedData(): AppData {
   ];
 
   const greenCardSlots: GreenCardSlot[] = [
+    { id: uid('gc'), title: 'Main Library - Silent Study', date: isoDaysFromNow(0), startTime: '10:00', endTime: '12:00', capacity: 25, bookedIds: [] },
+    { id: uid('gc'), title: 'Computer Lab - Coding Practice', date: isoDaysFromNow(0), startTime: '14:00', endTime: '16:00', capacity: 30, bookedIds: [] },
     { id: uid('gc'), title: 'Library Study Session', date: isoDaysFromNow(1), startTime: '09:00', endTime: '11:00', capacity: 30, bookedIds: ['u_student1', 'u_student2'] },
     { id: uid('gc'), title: 'Lab Practice - Electronics', date: isoDaysFromNow(2), startTime: '14:00', endTime: '16:00', capacity: 20, bookedIds: ['u_student2'] },
     { id: uid('gc'), title: 'Group Discussion Room', date: isoDaysFromNow(3), startTime: '10:00', endTime: '12:00', capacity: 15, bookedIds: [] },

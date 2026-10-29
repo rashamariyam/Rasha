@@ -13,6 +13,7 @@ import type {
   AuthCredential,
 } from '@/types';
 import { loadData, saveData, resetData, uid, isoHoursFromNow } from '@/lib/storage';
+import { getLocalDateString } from '@/lib/utils';
 import {
   hashPassword,
   verifyPassword,
@@ -732,6 +733,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         'id' | 'status' | 'teacherApproved' | 'hodApproved' | 'createdAt'
       >
     ) => {
+      const curToday = getLocalDateString();
+      if (req.startDate < curToday) {
+        toast('error', 'Leave start date cannot be in the past');
+        return;
+      }
+      if (req.endDate < req.startDate) {
+        toast('error', 'Leave end date cannot be earlier than start date');
+        return;
+      }
       const newReq: LeaveRequest = {
         ...req,
         id: uid('lv'),
@@ -853,6 +863,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Green Card
   const addSlot = useCallback(
     (slot: Omit<GreenCardSlot, 'id' | 'bookedIds'>) => {
+      const curToday = getLocalDateString();
+      if (slot.date < curToday) {
+        toast('error', 'Slot date cannot be in the past');
+        return;
+      }
       update((d) => ({
         ...d,
         greenCardSlots: [...d.greenCardSlots, { ...slot, id: uid('gc'), bookedIds: [] }],
@@ -891,6 +906,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       update((d) => {
         const slot = d.greenCardSlots.find((s) => s.id === slotId);
         if (!slot) return d;
+        const curToday = getLocalDateString();
+        if (slot.date < curToday) {
+          toast('error', 'Cannot book a slot for a past date');
+          return d;
+        }
         if (slot.bookedIds.includes(currentUser.id)) return d;
         if (slot.bookedIds.length >= slot.capacity) return d;
         const booking: Booking = {

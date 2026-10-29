@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Button, EmptyState, Field, Input, Select } from '@/components/ui/Form';
 import { Modal, ConfirmDialog } from '@/components/ui/Modal';
 import { SearchBar } from '@/components/layout/Topbar';
-import { formatDate, formatTime, rangesOverlap, toCSV, downloadCSV } from '@/lib/utils';
+import { formatDate, formatTime, rangesOverlap, toCSV, downloadCSV, getLocalDateString } from '@/lib/utils';
+import { DatePicker } from '@/components/ui/DatePicker';
 import {
   DoorOpen, Search as SearchIcon, Plus, Edit, Trash2, Download,
   Calendar, Clock, Users, Building, Check, X,
@@ -15,7 +16,8 @@ import type { Classroom } from '@/types';
 export function ClassroomPage() {
   const { currentUser, data, addClassroom, updateClassroom, deleteClassroom, addSchedule, deleteSchedule } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
-  const [checkDate, setCheckDate] = useState(new Date().toISOString().split('T')[0]);
+  const today = getLocalDateString();
+  const [checkDate, setCheckDate] = useState(today);
   const [checkStart, setCheckStart] = useState('');
   const [checkEnd, setCheckEnd] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
@@ -91,7 +93,11 @@ export function ClassroomPage() {
 
   const validateSchedule = (): boolean => {
     const e: Record<string, string> = {};
-    if (!schedForm.date) e.date = 'Date is required';
+    if (!schedForm.date) {
+      e.date = 'Date is required';
+    } else if (schedForm.date < today) {
+      e.date = 'Schedule date cannot be in the past';
+    }
     if (!schedForm.startTime) e.startTime = 'Start time is required';
     if (!schedForm.endTime) e.endTime = 'End time is required';
     if (schedForm.startTime && schedForm.endTime && schedForm.startTime >= schedForm.endTime) e.endTime = 'End time must be after start time';
@@ -134,7 +140,7 @@ export function ClassroomPage() {
         <div className="p-5">
           <div className="grid gap-4 sm:grid-cols-4">
             <Field label="Date" required>
-              <Input type="date" value={checkDate} onChange={(e) => setCheckDate(e.target.value)} />
+              <DatePicker value={checkDate} minDate={today} placeholder="Check date" onChange={setCheckDate} />
             </Field>
             <Field label="Start Time" required>
               <Input type="time" value={checkStart} onChange={(e) => setCheckStart(e.target.value)} />
@@ -341,7 +347,7 @@ export function ClassroomPage() {
             <p className="mb-3 text-sm font-medium text-gray-600">Add New Schedule</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Date" required error={schedErrors.date}>
-                <Input type="date" value={schedForm.date} onChange={(e) => setSchedForm((f) => ({ ...f, date: e.target.value }))} />
+                <DatePicker value={schedForm.date} minDate={today} placeholder="Schedule date" onChange={(d) => setSchedForm((f) => ({ ...f, date: d }))} />
               </Field>
               <div></div>
               <Field label="Start Time" required error={schedErrors.startTime}>

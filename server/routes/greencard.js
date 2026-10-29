@@ -16,6 +16,11 @@ router.get('/slots', async (req, res) => {
 router.post('/slots', async (req, res) => {
   try {
     const { title, date, startTime, endTime, capacity } = req.body;
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    if (!date || date < today) {
+      return res.status(400).json({ success: false, error: 'Slot date cannot be in the past' });
+    }
     const newSlot = new GreenCardSlot({
       id: 'gc_' + Date.now(),
       title,
@@ -38,6 +43,12 @@ router.post('/book', async (req, res) => {
     const { slotId, studentId, studentName } = req.body;
     const slot = await GreenCardSlot.findOne({ id: slotId });
     if (!slot) return res.status(404).json({ success: false, error: 'Slot not found' });
+
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    if (slot.date < today) {
+      return res.status(400).json({ success: false, error: 'Cannot book a slot for a past date' });
+    }
 
     if (slot.bookedIds.includes(studentId)) {
       return res.status(400).json({ success: false, error: 'You have already booked this slot' });
