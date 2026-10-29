@@ -32,7 +32,9 @@ router.post('/', async (req, res) => {
       startDate,
       endDate,
       reason,
-      documentName
+      documentName,
+      documentUrl,
+      documentType
     } = req.body;
 
     const id = 'lv_' + Date.now();
@@ -49,6 +51,8 @@ router.post('/', async (req, res) => {
       endDate,
       reason,
       documentName,
+      documentUrl,
+      documentType,
       status: 'pending',
       teacherApproved: false,
       hodApproved: false,

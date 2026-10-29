@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useApp } from '@/store/AppContext';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Field, Input, Select, Textarea, Button } from '@/components/ui/Form';
-import { formatDate } from '@/lib/utils';
-import { FileText, Paperclip, CheckCircle2 } from 'lucide-react';
+import { DocumentViewerModal } from '@/components/ui/DocumentViewerModal';
+import { FileText, Paperclip, CheckCircle2, Eye, Trash2, AlertCircle } from 'lucide-react';
 
 const leaveTypes = ['Sick Leave', 'Personal Leave', 'Conference Leave', 'Sports Leave', 'Family Event Leave', 'Other'];
 
@@ -15,7 +15,11 @@ export function ApplyLeavePage() {
     endDate: '',
     reason: '',
     documentName: '',
+    documentUrl: '',
+    documentType: '',
   });
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [showDocPreview, setShowDocPreview] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
 
@@ -47,14 +51,58 @@ export function ApplyLeavePage() {
       endDate: form.endDate,
       reason: form.reason.trim(),
       documentName: form.documentName || undefined,
+      documentUrl: form.documentUrl || undefined,
+      documentType: form.documentType || undefined,
     });
     setSubmitted(true);
-    setForm({ leaveType: '', startDate: '', endDate: '', reason: '', documentName: '' });
+    setForm({
+      leaveType: '',
+      startDate: '',
+      endDate: '',
+      reason: '',
+      documentName: '',
+      documentUrl: '',
+      documentType: '',
+    });
+    setFileError(null);
   };
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFileError(null);
     const file = e.target.files?.[0];
-    if (file) setForm((f) => ({ ...f, documentName: file.name }));
+    if (!file) return;
+
+    // Check size limit: max 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      setFileError('File exceeds 5MB size limit. Please choose a smaller file.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const detectedType = file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+      setForm((f) => ({
+        ...f,
+        documentName: file.name,
+        documentUrl: result,
+        documentType: detectedType,
+      }));
+    };
+    reader.onerror = () => {
+      setFileError('Could not read the selected file. Please try again.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeFile = () => {
+    setForm((f) => ({
+      ...f,
+      documentName: '',
+      documentUrl: '',
+      documentType: '',
+    }));
+    setFileError(null);
   };
 
   if (submitted) {
@@ -116,19 +164,52 @@ export function ApplyLeavePage() {
           </Field>
 
           <Field label="Supporting Document (optional)">
-            <div className="flex items-center gap-3">
-              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                <Paperclip size={16} />
-                {form.documentName || 'Choose file'}
-                <input type="file" className="hidden" onChange={handleFile} />
-              </label>
-              {form.documentName && (
-                <button type="button" onClick={() => setForm((f) => ({ ...f, documentName: '' }))} className="text-sm text-red-500 hover:underline">
-                  Remove
-                </button>
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-2xs transition">
+                  <Paperclip size={16} className="text-navy-600" />
+                  {form.documentName ? 'Replace File' : 'Choose File (PDF or Image)'}
+                  <input
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg,.webp"
+                    className="hidden"
+                    onChange={handleFile}
+                  />
+                </label>
+
+                {form.documentName && (
+                  <div className="flex items-center gap-2 rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-1.5 text-xs text-indigo-900">
+                    <span className="font-semibold truncate max-w-[200px]">{form.documentName}</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowDocPreview(true)}
+                      className="inline-flex items-center gap-1 font-semibold text-indigo-700 hover:text-indigo-900 ml-1"
+                      title="Preview uploaded document"
+                    >
+                      <Eye size={14} /> Preview
+                    </button>
+                    <button
+                      type="button"
+                      onClick={removeFile}
+                      className="text-red-500 hover:text-red-700 ml-1 p-0.5"
+                      title="Remove document"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {fileError ? (
+                <p className="flex items-center gap-1 text-xs text-red-600">
+                  <AlertCircle size={13} /> {fileError}
+                </p>
+              ) : (
+                <p className="text-xs text-gray-400">
+                  Upload medical certificates, event permissions, or proof (PDF, PNG, JPG up to 5MB). Teachers will be able to inspect and verify this document directly.
+                </p>
               )}
             </div>
-            <p className="mt-1 text-xs text-gray-400">Only the filename is saved in this demo</p>
           </Field>
 
           <div className="flex justify-end gap-3 border-t border-gray-100 pt-4">
@@ -137,6 +218,22 @@ export function ApplyLeavePage() {
           </div>
         </form>
       </Card>
+
+      {/* Preview Modal for student prior to submission */}
+      <DocumentViewerModal
+        open={showDocPreview}
+        onClose={() => setShowDocPreview(false)}
+        documentName={form.documentName}
+        documentUrl={form.documentUrl}
+        documentType={form.documentType}
+        studentName={currentUser.name}
+        rollNo={currentUser.rollNo}
+        department={currentUser.department}
+        leaveType={form.leaveType}
+        reason={form.reason}
+        startDate={form.startDate}
+        endDate={form.endDate}
+      />
     </div>
   );
 }

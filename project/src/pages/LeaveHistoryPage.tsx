@@ -5,8 +5,10 @@ import { StatusBadge } from '@/components/ui/Badge';
 import { Button, EmptyState } from '@/components/ui/Form';
 import { SearchBar } from '@/components/layout/Topbar';
 import { Modal } from '@/components/ui/Modal';
+import { DocumentViewerModal } from '@/components/ui/DocumentViewerModal';
 import { formatDate, formatDateTime, toCSV, downloadCSV } from '@/lib/utils';
-import { ClipboardList, Search, Download, Eye, FileText } from 'lucide-react';
+import { downloadDocument, getDocumentUrl } from '@/lib/documentUtils';
+import { ClipboardList, Download, Eye, FileText, Paperclip } from 'lucide-react';
 import type { LeaveRequest } from '@/types';
 
 export function LeaveHistoryPage() {
@@ -14,6 +16,7 @@ export function LeaveHistoryPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [viewReq, setViewReq] = useState<LeaveRequest | null>(null);
+  const [viewingDoc, setViewingDoc] = useState<LeaveRequest | null>(null);
 
   if (!currentUser) return null;
 
@@ -27,9 +30,16 @@ export function LeaveHistoryPage() {
 
   const exportCSV = () => {
     const rows = filtered.map((r) => ({
-      LeaveType: r.leaveType, StartDate: r.startDate, EndDate: r.endDate,
-      Reason: r.reason, Status: r.status, TeacherApproved: r.teacherApproved,
-      HODApproved: r.hodApproved, DecidedBy: r.decidedBy || '', DecidedAt: r.decidedAt || '',
+      LeaveType: r.leaveType,
+      StartDate: r.startDate,
+      EndDate: r.endDate,
+      Reason: r.reason,
+      Document: r.documentName || 'None',
+      Status: r.status,
+      TeacherApproved: r.teacherApproved,
+      HODApproved: r.hodApproved,
+      DecidedBy: r.decidedBy || '',
+      DecidedAt: r.decidedAt || '',
       DecisionNote: r.decisionNote || '',
     }));
     downloadCSV('my_leave_history.csv', toCSV(rows));
@@ -47,13 +57,17 @@ export function LeaveHistoryPage() {
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium capitalize transition ${filter === f ? 'bg-navy-800 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium capitalize transition ${
+                  filter === f ? 'bg-navy-800 text-white' : 'text-gray-600 hover:bg-gray-100'
+                }`}
               >
                 {f}
               </button>
             ))}
           </div>
-          <Button variant="secondary" size="sm" onClick={exportCSV}><Download size={16} /> CSV</Button>
+          <Button variant="secondary" size="sm" onClick={exportCSV}>
+            <Download size={16} /> CSV
+          </Button>
         </div>
       </div>
 
@@ -69,6 +83,7 @@ export function LeaveHistoryPage() {
                   <th className="px-5 py-3">Leave Type</th>
                   <th className="px-5 py-3">Start Date</th>
                   <th className="px-5 py-3">End Date</th>
+                  <th className="px-5 py-3">Document</th>
                   <th className="px-5 py-3">Teacher</th>
                   <th className="px-5 py-3">HOD</th>
                   <th className="px-5 py-3">Status</th>
@@ -77,19 +92,40 @@ export function LeaveHistoryPage() {
               </thead>
               <tbody>
                 {filtered.map((r) => (
-                  <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
+                  <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-3 font-medium text-gray-800">{r.leaveType}</td>
                     <td className="px-5 py-3 text-gray-600">{formatDate(r.startDate)}</td>
                     <td className="px-5 py-3 text-gray-600">{formatDate(r.endDate)}</td>
                     <td className="px-5 py-3">
+                      {r.documentName ? (
+                        <button
+                          type="button"
+                          onClick={() => setViewingDoc(r)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50/80 px-2.5 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition shadow-2xs"
+                          title="Click to view submitted document"
+                        >
+                          <Paperclip size={13} className="text-indigo-600" />
+                          <span className="max-w-[100px] truncate">{r.documentName}</span>
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-400">None</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
                       {r.teacherApproved ? <StatusBadge status="approved" /> : <StatusBadge status="pending" />}
                     </td>
                     <td className="px-5 py-3">
-                      {r.hodApproved ? <StatusBadge status="approved" /> : r.status === 'rejected' && r.decidedBy && r.hodApproved === false && r.teacherApproved ? <StatusBadge status="rejected" /> : <StatusBadge status="pending" />}
+                      {r.hodApproved ? (
+                        <StatusBadge status="approved" />
+                      ) : r.status === 'rejected' && r.decidedBy && r.hodApproved === false && r.teacherApproved ? (
+                        <StatusBadge status="rejected" />
+                      ) : (
+                        <StatusBadge status="pending" />
+                      )}
                     </td>
                     <td className="px-5 py-3"><StatusBadge status={r.status} /></td>
                     <td className="px-5 py-3">
-                      <button onClick={() => setViewReq(r)} className="rounded-lg p-1.5 text-navy-600 hover:bg-navy-50">
+                      <button onClick={() => setViewReq(r)} className="rounded-lg p-1.5 text-navy-600 hover:bg-navy-50" title="View Details">
                         <Eye size={18} />
                       </button>
                     </td>
@@ -123,8 +159,44 @@ export function LeaveHistoryPage() {
               <InfoRow label="Start Date" value={formatDate(viewReq.startDate)} />
               <InfoRow label="End Date" value={formatDate(viewReq.endDate)} />
               <InfoRow label="Submitted On" value={formatDateTime(viewReq.createdAt)} />
-              <InfoRow label="Document" value={viewReq.documentName || 'None'} />
             </div>
+
+            {/* Supporting Document Section */}
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Supporting Document</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <Paperclip size={16} className={viewReq.documentName ? "text-indigo-600" : "text-gray-400"} />
+                    <span className="text-sm font-semibold text-gray-900">
+                      {viewReq.documentName || 'No document uploaded'}
+                    </span>
+                  </div>
+                </div>
+                {viewReq.documentName && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setViewingDoc(viewReq)}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 transition"
+                    >
+                      <Eye size={14} /> View Document
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const doc = getDocumentUrl(viewReq);
+                        downloadDocument(doc.url, viewReq.documentName || 'leave_document');
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
+                    >
+                      <Download size={14} /> Download
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="rounded-lg bg-gray-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Reason</p>
               <p className="mt-1 text-sm text-gray-800">{viewReq.reason}</p>
@@ -144,6 +216,23 @@ export function LeaveHistoryPage() {
           </div>
         )}
       </Modal>
+
+      {/* Document Viewer Modal */}
+      <DocumentViewerModal
+        open={!!viewingDoc}
+        onClose={() => setViewingDoc(null)}
+        documentName={viewingDoc?.documentName}
+        documentUrl={viewingDoc?.documentUrl}
+        documentType={viewingDoc?.documentType}
+        studentName={viewingDoc?.studentName}
+        rollNo={viewingDoc?.rollNo}
+        department={viewingDoc?.department}
+        leaveType={viewingDoc?.leaveType}
+        reason={viewingDoc?.reason}
+        startDate={viewingDoc?.startDate}
+        endDate={viewingDoc?.endDate}
+        createdAt={viewingDoc?.createdAt}
+      />
     </div>
   );
 }

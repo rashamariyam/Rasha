@@ -4,9 +4,11 @@ import { Card, CardHeader } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/Badge';
 import { Button, EmptyState, Textarea, Field } from '@/components/ui/Form';
 import { SearchBar } from '@/components/layout/Topbar';
-import { Modal, ConfirmDialog } from '@/components/ui/Modal';
+import { Modal } from '@/components/ui/Modal';
+import { DocumentViewerModal } from '@/components/ui/DocumentViewerModal';
 import { formatDate, formatDateTime, toCSV, downloadCSV } from '@/lib/utils';
-import { CheckSquare, Download, Check, X, Eye, Clock } from 'lucide-react';
+import { downloadDocument, getDocumentUrl } from '@/lib/documentUtils';
+import { CheckSquare, Download, Check, X, Eye, Clock, Paperclip } from 'lucide-react';
 import type { LeaveRequest } from '@/types';
 
 export function LeaveApprovalsPage() {
@@ -15,6 +17,7 @@ export function LeaveApprovalsPage() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
   const [deptScope, setDeptScope] = useState<'my' | 'all'>('my');
   const [viewReq, setViewReq] = useState<LeaveRequest | null>(null);
+  const [viewingDoc, setViewingDoc] = useState<LeaveRequest | null>(null);
   const [decision, setDecision] = useState<{ req: LeaveRequest; approve: boolean } | null>(null);
   const [note, setNote] = useState('');
 
@@ -37,10 +40,12 @@ export function LeaveApprovalsPage() {
     .filter((r) => filter === 'all' || r.status === filter)
     .filter((r) => {
       const q = search.toLowerCase();
-      return r.studentName.toLowerCase().includes(q) ||
+      return (
+        r.studentName.toLowerCase().includes(q) ||
         r.leaveType.toLowerCase().includes(q) ||
         r.rollNo.toLowerCase().includes(q) ||
-        r.department.toLowerCase().includes(q);
+        r.department.toLowerCase().includes(q)
+      );
     })
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
@@ -53,10 +58,19 @@ export function LeaveApprovalsPage() {
 
   const exportCSV = () => {
     const rows = filtered.map((r) => ({
-      Student: r.studentName, RollNo: r.rollNo, Department: r.department,
-      LeaveType: r.leaveType, StartDate: r.startDate, EndDate: r.endDate,
-      Reason: r.reason, Status: r.status, TeacherApproved: r.teacherApproved,
-      HODApproved: r.hodApproved, DecidedBy: r.decidedBy || '', Note: r.decisionNote || '',
+      Student: r.studentName,
+      RollNo: r.rollNo,
+      Department: r.department,
+      LeaveType: r.leaveType,
+      StartDate: r.startDate,
+      EndDate: r.endDate,
+      Reason: r.reason,
+      Document: r.documentName || 'None',
+      Status: r.status,
+      TeacherApproved: r.teacherApproved,
+      HODApproved: r.hodApproved,
+      DecidedBy: r.decidedBy || '',
+      Note: r.decisionNote || '',
     }));
     downloadCSV('leave_approvals.csv', toCSV(rows));
   };
@@ -109,20 +123,30 @@ export function LeaveApprovalsPage() {
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`rounded-md px-3 py-1.5 text-xs sm:text-sm font-medium capitalize transition ${filter === f ? 'bg-navy-800 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+                className={`rounded-md px-3 py-1.5 text-xs sm:text-sm font-medium capitalize transition ${
+                  filter === f ? 'bg-navy-800 text-white' : 'text-gray-600 hover:bg-gray-100'
+                }`}
               >
                 {f}
               </button>
             ))}
           </div>
-          <Button variant="secondary" size="sm" onClick={exportCSV}><Download size={16} /> CSV</Button>
+          <Button variant="secondary" size="sm" onClick={exportCSV}>
+            <Download size={16} /> CSV
+          </Button>
         </div>
       </div>
 
       <Card>
         <CardHeader
           title="Leave Requests"
-          subtitle={role === 'teacher' ? 'Review and approve student leave requests' : role === 'hod' ? 'Final approval stage — review teacher-approved requests' : 'All leave requests across departments'}
+          subtitle={
+            role === 'teacher'
+              ? 'Review, inspect student supporting documents, and approve leave requests'
+              : role === 'hod'
+              ? 'Final approval stage — review teacher-approved requests & verified documents'
+              : 'All leave requests across departments'
+          }
         />
         {filtered.length === 0 ? (
           <EmptyState icon={<CheckSquare size={32} />} title="No requests found" message="No leave requests match your filters" />
@@ -151,6 +175,23 @@ export function LeaveApprovalsPage() {
                     <p className="text-xs text-gray-600 line-clamp-2 italic bg-navy-50/30 p-2 rounded">
                       "{r.reason}"
                     </p>
+                  )}
+
+                  {/* Mobile Document Attachment Row */}
+                  {r.documentName && (
+                    <div className="flex items-center justify-between rounded-lg border border-indigo-100 bg-indigo-50/60 p-2 text-xs">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Paperclip size={14} className="text-indigo-600 shrink-0" />
+                        <span className="font-medium text-indigo-900 truncate max-w-[170px]">{r.documentName}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setViewingDoc(r)}
+                        className="shrink-0 inline-flex items-center gap-1 rounded bg-indigo-600 px-2 py-0.5 font-semibold text-white hover:bg-indigo-700 shadow-2xs transition"
+                      >
+                        <Eye size={12} /> View Doc
+                      </button>
+                    </div>
                   )}
 
                   <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1">
@@ -199,6 +240,7 @@ export function LeaveApprovalsPage() {
                     <th className="px-5 py-3">Roll No</th>
                     <th className="px-5 py-3">Type</th>
                     <th className="px-5 py-3">Duration</th>
+                    <th className="px-5 py-3">Document</th>
                     <th className="px-5 py-3">Teacher</th>
                     <th className="px-5 py-3">HOD</th>
                     <th className="px-5 py-3">Status</th>
@@ -207,11 +249,27 @@ export function LeaveApprovalsPage() {
                 </thead>
                 <tbody>
                   {filtered.map((r) => (
-                    <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50">
+                    <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                       <td className="px-5 py-3 font-medium text-gray-800">{r.studentName}</td>
                       <td className="px-5 py-3 text-gray-600">{r.rollNo}</td>
                       <td className="px-5 py-3 text-gray-600">{r.leaveType}</td>
                       <td className="px-5 py-3 text-gray-600">{formatDate(r.startDate)} → {formatDate(r.endDate)}</td>
+                      <td className="px-5 py-3">
+                        {r.documentName ? (
+                          <button
+                            type="button"
+                            onClick={() => setViewingDoc(r)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50/80 px-2.5 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition shadow-2xs"
+                            title="Click to view supporting document"
+                          >
+                            <Paperclip size={13} className="text-indigo-600" />
+                            <span className="max-w-[110px] truncate">{r.documentName}</span>
+                            <Eye size={12} className="text-indigo-500 ml-0.5" />
+                          </button>
+                        ) : (
+                          <span className="text-xs text-gray-400">None</span>
+                        )}
+                      </td>
                       <td className="px-5 py-3">{r.teacherApproved ? <StatusBadge status="approved" /> : <StatusBadge status="pending" />}</td>
                       <td className="px-5 py-3">{r.hodApproved ? <StatusBadge status="approved" /> : <StatusBadge status="pending" />}</td>
                       <td className="px-5 py-3"><StatusBadge status={r.status} /></td>
@@ -284,8 +342,44 @@ export function LeaveApprovalsPage() {
               <InfoRow label="Start Date" value={formatDate(viewReq.startDate)} />
               <InfoRow label="End Date" value={formatDate(viewReq.endDate)} />
               <InfoRow label="Submitted On" value={formatDateTime(viewReq.createdAt)} />
-              <InfoRow label="Document" value={viewReq.documentName || 'None'} />
             </div>
+
+            {/* Supporting Document Section */}
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Supporting Document</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <Paperclip size={16} className={viewReq.documentName ? "text-indigo-600" : "text-gray-400"} />
+                    <span className="text-sm font-semibold text-gray-900">
+                      {viewReq.documentName || 'No document submitted'}
+                    </span>
+                  </div>
+                </div>
+                {viewReq.documentName && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setViewingDoc(viewReq)}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 transition"
+                    >
+                      <Eye size={14} /> View Document
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const doc = getDocumentUrl(viewReq);
+                        downloadDocument(doc.url, viewReq.documentName || 'leave_document');
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
+                    >
+                      <Download size={14} /> Download
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="rounded-lg bg-gray-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Reason</p>
               <p className="mt-1 text-sm text-gray-800">{viewReq.reason}</p>
@@ -333,6 +427,23 @@ export function LeaveApprovalsPage() {
           </div>
         )}
       </Modal>
+
+      {/* Document Viewer Modal */}
+      <DocumentViewerModal
+        open={!!viewingDoc}
+        onClose={() => setViewingDoc(null)}
+        documentName={viewingDoc?.documentName}
+        documentUrl={viewingDoc?.documentUrl}
+        documentType={viewingDoc?.documentType}
+        studentName={viewingDoc?.studentName}
+        rollNo={viewingDoc?.rollNo}
+        department={viewingDoc?.department}
+        leaveType={viewingDoc?.leaveType}
+        reason={viewingDoc?.reason}
+        startDate={viewingDoc?.startDate}
+        endDate={viewingDoc?.endDate}
+        createdAt={viewingDoc?.createdAt}
+      />
     </div>
   );
 }

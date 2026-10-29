@@ -12,6 +12,8 @@ const LeaveRequestSchema = new mongoose.Schema(
     endDate: { type: String, required: true },
     reason: { type: String, required: true },
     documentName: { type: String },
+    documentUrl: { type: String },
+    documentType: { type: String },
     status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
     teacherApproved: { type: Boolean, default: false },
     hodApproved: { type: Boolean, default: false },

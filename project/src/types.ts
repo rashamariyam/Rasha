@@ -64,6 +64,8 @@ export interface LeaveRequest {
   endDate: string;
   reason: string;
   documentName?: string;
+  documentUrl?: string;
+  documentType?: string;
   status: LeaveStatus;
   teacherApproved: boolean;
   hodApproved: boolean;
