@@ -7,12 +7,15 @@ import {
   ZoomIn,
   ZoomOut,
   FileCheck,
+  ShieldCheck,
+  Paperclip,
 } from 'lucide-react';
 import {
   dataUrlToBlob,
   downloadDocument,
   openDocumentInNewTab,
   getDocumentUrl,
+  getVerifiedDocumentUrl,
   type ResolvedDocument,
 } from '@/lib/documentUtils';
 
@@ -30,6 +33,13 @@ export interface DocumentViewerModalProps {
   startDate?: string;
   endDate?: string;
   createdAt?: string;
+  status?: string;
+  teacherApproved?: boolean;
+  hodApproved?: boolean;
+  decidedBy?: string;
+  decidedAt?: string;
+  decisionNote?: string;
+  initialMode?: 'attachment' | 'verified';
 }
 
 export function DocumentViewerModal({
@@ -46,8 +56,27 @@ export function DocumentViewerModal({
   startDate,
   endDate,
   createdAt,
+  status,
+  decidedBy,
+  decidedAt,
+  decisionNote,
+  initialMode = 'attachment',
 }: DocumentViewerModalProps) {
+  const isApproved = status === 'approved';
+  const [activeTab, setActiveTab] = useState<'attachment' | 'verified'>('attachment');
   const [zoom, setZoom] = useState(100);
+
+  // Set initial tab on open
+  useEffect(() => {
+    if (open) {
+      if (initialMode === 'verified' && isApproved) {
+        setActiveTab('verified');
+      } else {
+        setActiveTab('attachment');
+      }
+      setZoom(100);
+    }
+  }, [open, initialMode, isApproved, documentName]);
 
   // Keyboard shortcut ESC to close
   useEffect(() => {
@@ -64,13 +93,25 @@ export function DocumentViewerModal({
     }
   }, [open, onClose]);
 
-  // Reset zoom on open
-  useEffect(() => {
-    if (open) setZoom(100);
-  }, [open, documentName]);
-
   const resolved: ResolvedDocument | null = useMemo(() => {
     if (!open) return null;
+
+    if (activeTab === 'verified' && isApproved) {
+      return getVerifiedDocumentUrl({
+        documentName,
+        studentName,
+        rollNo,
+        department,
+        leaveType,
+        reason,
+        startDate,
+        endDate,
+        decidedBy,
+        decidedAt,
+        decisionNote,
+      });
+    }
+
     return getDocumentUrl({
       documentName,
       documentUrl,
@@ -86,6 +127,8 @@ export function DocumentViewerModal({
     });
   }, [
     open,
+    activeTab,
+    isApproved,
     documentName,
     documentUrl,
     documentType,
@@ -97,6 +140,9 @@ export function DocumentViewerModal({
     startDate,
     endDate,
     createdAt,
+    decidedBy,
+    decidedAt,
+    decisionNote,
   ]);
 
   // Generate safe blob URL for PDFs
@@ -114,7 +160,6 @@ export function DocumentViewerModal({
     return null;
   }, [resolved]);
 
-  // Clean up blob URL on unmount or doc change
   useEffect(() => {
     return () => {
       if (blobUrl) {
@@ -127,7 +172,6 @@ export function DocumentViewerModal({
 
   const isPdf = resolved.mimeType === 'application/pdf';
   const isImage = resolved.mimeType.startsWith('image/');
-  const isGenerated = resolved.isGenerated;
 
   const handleDownload = () => {
     downloadDocument(resolved.url, resolved.name);
@@ -150,16 +194,34 @@ export function DocumentViewerModal({
         {/* Header Bar */}
         <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50/90 px-4 sm:px-6 py-3.5">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-navy-100 text-navy-800">
-              <FileText size={20} />
+            <div
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                activeTab === 'verified'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-navy-100 text-navy-800'
+              }`}
+            >
+              {activeTab === 'verified' ? <ShieldCheck size={22} /> : <FileText size={20} />}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h3 className="text-base sm:text-lg font-semibold text-navy-900 truncate">
                   {resolved.name}
                 </h3>
-                <span className="shrink-0 inline-flex items-center rounded-md bg-navy-50 px-2 py-0.5 text-[11px] font-semibold text-navy-700 border border-navy-200">
-                  {isPdf ? 'PDF Document' : isGenerated ? 'Official Verification' : 'Image Attachment'}
+                <span
+                  className={`shrink-0 inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold border ${
+                    activeTab === 'verified'
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      : isApproved
+                      ? 'bg-navy-50 text-navy-700 border-navy-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                  }`}
+                >
+                  {activeTab === 'verified'
+                    ? 'Verified Certificate'
+                    : isApproved
+                    ? 'Student File (Approved)'
+                    : 'Student File (Pending Review)'}
                 </span>
               </div>
               <p className="text-xs text-gray-500 truncate">
@@ -175,7 +237,7 @@ export function DocumentViewerModal({
               type="button"
               onClick={handleOpenExternal}
               className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 hover:text-navy-900 transition"
-              title="Open document in a new browser tab"
+              title="Open in new tab"
             >
               <ExternalLink size={14} />
               <span className="hidden sm:inline">Open in Tab</span>
@@ -184,7 +246,7 @@ export function DocumentViewerModal({
               type="button"
               onClick={handleDownload}
               className="inline-flex items-center gap-1 rounded-lg bg-navy-800 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-white hover:bg-navy-900 shadow-xs transition"
-              title="Download file to computer"
+              title="Download file"
             >
               <Download size={14} />
               <span className="hidden sm:inline">Download</span>
@@ -193,20 +255,56 @@ export function DocumentViewerModal({
               type="button"
               onClick={onClose}
               className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-200 hover:text-gray-700 transition"
-              title="Close viewer"
+              title="Close"
             >
               <X size={20} />
             </button>
           </div>
         </div>
 
+        {/* Tab Selection Bar (Active ONLY after approval) */}
+        {isApproved && (
+          <div className="flex items-center gap-2 border-b border-gray-200 bg-gray-100/60 px-4 sm:px-6 py-2">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('attachment');
+                setZoom(100);
+              }}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                activeTab === 'attachment'
+                  ? 'bg-white text-navy-900 shadow-xs border border-gray-200'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Paperclip size={14} />
+              Student Attached File
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('verified');
+                setZoom(100);
+              }}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                activeTab === 'verified'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-emerald-700 hover:bg-emerald-50'
+              }`}
+            >
+              <ShieldCheck size={14} />
+              Official Verified Document
+            </button>
+          </div>
+        )}
+
         {/* Zoom Controls Bar for Images / SVGs */}
         {isImage && (
           <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/50 px-4 py-2 text-xs text-gray-600">
             <span className="text-[11px] text-gray-500">
-              {isGenerated
-                ? 'Official leave proof verification view'
-                : 'Student attached image proof'}
+              {activeTab === 'verified'
+                ? 'Official leave certificate issued upon approval'
+                : 'Raw file uploaded by student'}
             </span>
             <div className="flex items-center gap-1">
               <button
@@ -248,7 +346,7 @@ export function DocumentViewerModal({
                 className="w-full h-full border-0"
               />
               <div className="flex items-center justify-between bg-gray-50 border-t border-gray-200 px-4 py-2 text-xs text-gray-600">
-                <span>PDF not rendering in your browser?</span>
+                <span>PDF not rendering?</span>
                 <div className="flex gap-2">
                   <button
                     onClick={handleOpenExternal}
@@ -303,11 +401,18 @@ export function DocumentViewerModal({
         {/* Footer info bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-t border-gray-200 bg-gray-50 px-4 sm:px-6 py-3 text-xs text-gray-500 gap-2">
           <div className="flex items-center gap-2">
-            <span className="font-medium text-gray-700">Verification Status:</span>
-            <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-              Attached &amp; Authenticated for Leave Review
-            </span>
+            <span className="font-medium text-gray-700">Verification State:</span>
+            {isApproved ? (
+              <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold">
+                <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+                Officially Approved &amp; Verified by {decidedBy || 'Faculty'}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-amber-700 font-semibold">
+                <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span>
+                Student Submission · Pending Approval
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <button

@@ -8,7 +8,7 @@ import { Modal } from '@/components/ui/Modal';
 import { DocumentViewerModal } from '@/components/ui/DocumentViewerModal';
 import { formatDate, formatDateTime, toCSV, downloadCSV } from '@/lib/utils';
 import { downloadDocument, getDocumentUrl } from '@/lib/documentUtils';
-import { CheckSquare, Download, Check, X, Eye, Clock, Paperclip } from 'lucide-react';
+import { CheckSquare, Download, Check, X, Eye, Clock, Paperclip, ShieldCheck } from 'lucide-react';
 import type { LeaveRequest } from '@/types';
 
 export function LeaveApprovalsPage() {
@@ -18,6 +18,7 @@ export function LeaveApprovalsPage() {
   const [deptScope, setDeptScope] = useState<'my' | 'all'>('my');
   const [viewReq, setViewReq] = useState<LeaveRequest | null>(null);
   const [viewingDoc, setViewingDoc] = useState<LeaveRequest | null>(null);
+  const [docModalMode, setDocModalMode] = useState<'attachment' | 'verified'>('attachment');
   const [decision, setDecision] = useState<{ req: LeaveRequest; approve: boolean } | null>(null);
   const [note, setNote] = useState('');
 
@@ -186,10 +187,13 @@ export function LeaveApprovalsPage() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => setViewingDoc(r)}
+                        onClick={() => {
+                          setDocModalMode('attachment');
+                          setViewingDoc(r);
+                        }}
                         className="shrink-0 inline-flex items-center gap-1 rounded bg-indigo-600 px-2 py-0.5 font-semibold text-white hover:bg-indigo-700 shadow-2xs transition"
                       >
-                        <Eye size={12} /> View Doc
+                        <Eye size={12} /> View File
                       </button>
                     </div>
                   )}
@@ -240,7 +244,7 @@ export function LeaveApprovalsPage() {
                     <th className="px-5 py-3">Roll No</th>
                     <th className="px-5 py-3">Type</th>
                     <th className="px-5 py-3">Duration</th>
-                    <th className="px-5 py-3">Document</th>
+                    <th className="px-5 py-3">Attached File</th>
                     <th className="px-5 py-3">Teacher</th>
                     <th className="px-5 py-3">HOD</th>
                     <th className="px-5 py-3">Status</th>
@@ -258,9 +262,12 @@ export function LeaveApprovalsPage() {
                         {r.documentName ? (
                           <button
                             type="button"
-                            onClick={() => setViewingDoc(r)}
+                            onClick={() => {
+                              setDocModalMode('attachment');
+                              setViewingDoc(r);
+                            }}
                             className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50/80 px-2.5 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition shadow-2xs"
-                            title="Click to view supporting document"
+                            title="Click to view student uploaded file"
                           >
                             <Paperclip size={13} className="text-indigo-600" />
                             <span className="max-w-[110px] truncate">{r.documentName}</span>
@@ -348,7 +355,18 @@ export function LeaveApprovalsPage() {
             <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Supporting Document</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Student Attached Document</p>
+                    {viewReq.status === 'approved' ? (
+                      <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                        ✓ Verified &amp; Approved
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                        ⏳ Pending Approval
+                      </span>
+                    )}
+                  </div>
                   <div className="mt-1 flex items-center gap-2">
                     <Paperclip size={16} className={viewReq.documentName ? "text-indigo-600" : "text-gray-400"} />
                     <span className="text-sm font-semibold text-gray-900">
@@ -357,19 +375,36 @@ export function LeaveApprovalsPage() {
                   </div>
                 </div>
                 {viewReq.documentName && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setViewingDoc(viewReq)}
+                      onClick={() => {
+                        setDocModalMode('attachment');
+                        setViewingDoc(viewReq);
+                      }}
                       className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 transition"
+                      title="Inspect student raw upload"
                     >
-                      <Eye size={14} /> View Document
+                      <Eye size={14} /> View Attached File
                     </button>
+                    {viewReq.status === 'approved' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDocModalMode('verified');
+                          setViewingDoc(viewReq);
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-800 transition"
+                        title="View official verified certificate"
+                      >
+                        <ShieldCheck size={14} /> Verified Certificate
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
                         const doc = getDocumentUrl(viewReq);
-                        downloadDocument(doc.url, viewReq.documentName || 'leave_document');
+                        downloadDocument(doc.url, viewReq.documentName || 'student_attachment');
                       }}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
                     >
@@ -443,6 +478,13 @@ export function LeaveApprovalsPage() {
         startDate={viewingDoc?.startDate}
         endDate={viewingDoc?.endDate}
         createdAt={viewingDoc?.createdAt}
+        status={viewingDoc?.status}
+        teacherApproved={viewingDoc?.teacherApproved}
+        hodApproved={viewingDoc?.hodApproved}
+        decidedBy={viewingDoc?.decidedBy}
+        decidedAt={viewingDoc?.decidedAt}
+        decisionNote={viewingDoc?.decisionNote}
+        initialMode={docModalMode}
       />
     </div>
   );

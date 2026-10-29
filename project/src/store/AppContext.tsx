@@ -199,7 +199,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const newFromBackend = result.leaves.filter((r: LeaveRequest) => !existingIds.has(r.id));
             const backendMap = new Map(result.leaves.map((r: LeaveRequest) => [r.id, r]));
             const merged = d.leaveRequests.map((r) =>
-              backendMap.has(r.id) ? (backendMap.get(r.id) as LeaveRequest) : r
+              (() => {
+                if (!backendMap.has(r.id)) return r;
+                const b = backendMap.get(r.id) as LeaveRequest;
+                return {
+                  ...r,
+                  ...b,
+                  documentUrl: b.documentUrl || r.documentUrl,
+                  documentType: b.documentType || r.documentType,
+                };
+              })()
             );
             return {
               ...d,

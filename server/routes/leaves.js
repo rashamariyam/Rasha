@@ -37,8 +37,8 @@ router.post('/', async (req, res) => {
       documentType
     } = req.body;
 
-    const id = 'lv_' + Date.now();
-    const createdAt = new Date().toISOString();
+    const id = req.body.id || ('lv_' + Date.now());
+    const createdAt = req.body.createdAt || new Date().toISOString();
 
     const newLeave = new LeaveRequest({
       id,
